@@ -354,6 +354,26 @@ public:
     }
   }
 
+  void Merge(const Bin* other){
+    //TODO: Optimisations:
+    // - Reserve space in data_
+    // - Add data via:
+    //   + Add a single value first to ensure current data is even
+    //   + Add data 2 elements at a time
+    //   + Add a final element if needed.
+    auto other_bin = dynamic_cast<const Dense4bitsBin*>(other);
+    for (int i = 0; i < other_bin->num_data_; i++){
+      int idx = num_data_ + i;
+      const auto bin = static_cast<uint8_t>((other_bin->data_[i >> 1] >> ((i & 1) << 2)) & 0xf);
+      if((idx & 1) == 0){
+	data_.push_back(bin);
+      } else {
+	data_.back() |= bin << 4;
+      }
+    }
+    num_data_ += other_bin->num_data_;
+  }
+
   void SaveBinaryToFile(const VirtualFileWriter* writer) const override {
     writer->Write(data_.data(), sizeof(uint8_t) * data_.size());
   }

@@ -316,7 +316,7 @@ public:
     for(int i = 0; i < other_bin->num_data_; i++){
       data_.push_back(other_bin->data_[i]);
     }
-    num_data_ += other->num_data_;
+    num_data_ += other_bin->num_data_;
   }
 
 protected:
