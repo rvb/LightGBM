@@ -9,8 +9,17 @@ import numpy as np
 from sklearn.datasets import load_breast_cancer, dump_svmlight_file, load_svmlight_file
 from sklearn.model_selection import train_test_split
 
-
 class TestBasic(unittest.TestCase):
+    def assertFilesEqual(self, f1name, f2name):
+        with open(f1name) as f1:
+            f1data = f1.read()
+        with open(f2name) as f2:
+            f2data = f2.read()
+        self.assertEqual(f1data, f2data)
+
+    def tempFileName(self):
+        with tempfile.NamedTemporaryFile() as f:
+            return f.name
 
     def test(self):
         X_train, X_test, y_train, y_test = train_test_split(*load_breast_cancer(True),
@@ -41,8 +50,7 @@ class TestBasic(unittest.TestCase):
 
         bst.save_model("model.txt")
         pred_from_matr = bst.predict(X_test)
-        with tempfile.NamedTemporaryFile() as f:
-            tname = f.name
+        tname = self.tempFileName()
         with open(tname, "w+b") as f:
             dump_svmlight_file(X_test, y_test, f)
         pred_from_file = bst.predict(tname)
@@ -127,20 +135,14 @@ class TestBasic(unittest.TestCase):
             d1 = lgb.Dataset(X[:,:j],feature_name=names[:j]).construct()
             d2 = lgb.Dataset(X[:,j:],feature_name=names[j:]).construct()
             d1.add_features_from(d2)
-            with tempfile.NamedTemporaryFile() as f:
-                d1name = f.name
+            d1name = self.tempFileName()
             d1.dump_text(d1name)
             d = lgb.Dataset(X,feature_name=names).construct()
-            with tempfile.NamedTemporaryFile() as f:
-                dname = f.name
+            dname = self.tempFileName()
             d.dump_text(dname)
-            with open(d1name,'rt') as d1f:
-                 d1txt = d1f.read()
-            with open(dname, 'rt') as df:
-                 dtxt = df.read()
+            self.assertFilesEqual(d1name, dname)
             os.remove(dname)
             os.remove(d1name)
-            self.assertEqual(dtxt, d1txt)
 
     def test_add_features_same_booster_behaviour(self):
         X = np.random.random((1000,5))
@@ -159,17 +161,13 @@ class TestBasic(unittest.TestCase):
             for k in range(10):
                 b.update()
                 b1.update()
-            with tempfile.NamedTemporaryFile() as df:
-                dname = df.name
-            with tempfile.NamedTemporaryFile() as d1f:
-                d1name = d1f.name
+            dname = self.tempFileName()
+            d1name = self.tempFileName()
             b1.save_model(d1name)
             b.save_model(dname)
-            with open(dname, 'rt') as df:
-                dtxt = df.read()
-            with open(d1name, 'rt') as d1f:
-                d1txt = d1f.read()
-            self.assertEqual(dtxt, d1txt)
+            self.assertFilesEqual(d1name, dname)
+            os.remove(d1name)
+            os.remove(dname)
 
     def test_get_feature_penalty(self):
         X = np.random.random((1000,1))
@@ -239,3 +237,19 @@ class TestBasic(unittest.TestCase):
         d2 = lgb.Dataset(X[:,1].reshape((-1,1))).construct()
         d1.add_features_from(d2)
         self.assertEqual(None, d2.handle)
+
+    def test_add_data_from_dense_bins(self):
+        X = np.random.random((1000,2))
+        ref = lgb.Dataset(X).construct()
+        X = np.random.random((100,2))
+        d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
+        d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
+        d1.add_data_from(d2)
+        d1name = self.tempFileName()
+        d1.dump_text(d1name)
+        d = lgb.Dataset(X, reference=ref).construct()
+        dname = self.tempFileName()
+        d.dump_text(dname)
+        self.assertFilesEqual(d1name, dname)
+        os.remove(d1name)
+        os.remove(dname)
