@@ -4,6 +4,7 @@
 """Wrapper for C API of LightGBM."""
 from __future__ import absolute_import
 
+import atexit
 import copy
 import ctypes
 import os
@@ -2558,3 +2559,9 @@ class Booster(object):
             else:
                 self.__attr.pop(key, None)
         return self
+
+def enable_profiling(fname):
+    def write_metrics():
+        encoded = fname.encode('utf-8')
+        _safe_call(_LIB.LGBM_WriteProfilingMetrics(ctypes.c_char_p(encoded)))        
+    atexit.register(write_metrics)

@@ -5,7 +5,7 @@ Contributors: https://github.com/Microsoft/LightGBM/graphs/contributors.
 """
 from __future__ import absolute_import
 
-from .basic import Booster, Dataset
+from .basic import Booster, Dataset, enable_profiling
 from .callback import (early_stopping, print_evaluation, record_evaluation,
                        reset_parameter)
 from .engine import cv, train

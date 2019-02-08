@@ -859,4 +859,6 @@ inline void LGBM_SetLastError(const char* msg) {
   std::strcpy(LastErrorMsg(), msg);
 }
 
+LIGHTGBM_C_EXPORT int LGBM_WriteProfilingMetrics(const char* filename);
+
 #endif  // LIGHTGBM_C_API_H_

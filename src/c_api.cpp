@@ -14,6 +14,8 @@
 #include <LightGBM/prediction_early_stop.h>
 #include <LightGBM/network.h>
 
+#include <LightGBM/profiling.h>
+
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -383,6 +385,7 @@ int LGBM_DatasetCreateFromFile(const char* filename,
                                const DatasetHandle reference,
                                DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -400,6 +403,7 @@ int LGBM_DatasetCreateFromFile(const char* filename,
     *out = loader.LoadFromFileAlignWithOtherDataset(filename, "",
                                                     reinterpret_cast<const Dataset*>(reference));
   }
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -413,6 +417,7 @@ int LGBM_DatasetCreateFromSampledColumn(double** sample_data,
                                         const char* parameters,
                                         DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -423,6 +428,7 @@ int LGBM_DatasetCreateFromSampledColumn(double** sample_data,
   *out = loader.CostructFromSampleData(sample_data, sample_indices, ncol, num_per_col,
                                        num_sample_row,
                                        static_cast<data_size_t>(num_total_row));
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -431,10 +437,12 @@ int LGBM_DatasetCreateByReference(const DatasetHandle reference,
                                   int64_t num_total_row,
                                   DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   std::unique_ptr<Dataset> ret;
   ret.reset(new Dataset(static_cast<data_size_t>(num_total_row)));
   ret->CreateValid(reinterpret_cast<const Dataset*>(reference));
   *out = ret.release();
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -445,6 +453,7 @@ int LGBM_DatasetPushRows(DatasetHandle dataset,
                          int32_t ncol,
                          int32_t start_row) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto p_dataset = reinterpret_cast<Dataset*>(dataset);
   auto get_row_fun = RowFunctionFromDenseMatric(data, nrow, ncol, data_type, 1);
   OMP_INIT_EX();
@@ -460,6 +469,7 @@ int LGBM_DatasetPushRows(DatasetHandle dataset,
   if (start_row + nrow == p_dataset->num_data()) {
     p_dataset->FinishLoad();
   }
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -474,6 +484,7 @@ int LGBM_DatasetPushRowsByCSR(DatasetHandle dataset,
                               int64_t,
                               int64_t start_row) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto p_dataset = reinterpret_cast<Dataset*>(dataset);
   auto get_row_fun = RowFunctionFromCSR(indptr, indptr_type, indices, data, data_type, nindptr, nelem);
   int32_t nrow = static_cast<int32_t>(nindptr - 1);
@@ -491,6 +502,7 @@ int LGBM_DatasetPushRowsByCSR(DatasetHandle dataset,
   if (start_row + nrow == static_cast<int64_t>(p_dataset->num_data())) {
     p_dataset->FinishLoad();
   }
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -524,6 +536,7 @@ int LGBM_DatasetCreateFromMats(int32_t nmat,
                                const DatasetHandle reference,
                                DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -595,6 +608,7 @@ int LGBM_DatasetCreateFromMats(int32_t nmat,
   }
   ret->FinishLoad();
   *out = ret.release();
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -610,6 +624,7 @@ int LGBM_DatasetCreateFromCSR(const void* indptr,
                               const DatasetHandle reference,
                               DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -661,6 +676,7 @@ int LGBM_DatasetCreateFromCSR(const void* indptr,
   OMP_THROW_EX();
   ret->FinishLoad();
   *out = ret.release();
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -676,6 +692,7 @@ int LGBM_DatasetCreateFromCSC(const void* col_ptr,
                               const DatasetHandle reference,
                               DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -741,6 +758,7 @@ int LGBM_DatasetCreateFromCSC(const void* col_ptr,
   OMP_THROW_EX();
   ret->FinishLoad();
   *out = ret.release();
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -751,6 +769,7 @@ int LGBM_DatasetGetSubset(
   const char* parameters,
   DatasetHandle* out) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto param = Config::Str2Map(parameters);
   Config config;
   config.Set(param);
@@ -766,6 +785,7 @@ int LGBM_DatasetGetSubset(
   ret->CopyFeatureMapperFrom(full_dataset);
   ret->CopySubset(full_dataset, used_row_indices, num_used_row_indices, true);
   *out = ret.release();
+  dataset_load_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -807,16 +827,20 @@ int LGBM_DatasetFree(DatasetHandle handle) {
 int LGBM_DatasetSaveBinary(DatasetHandle handle,
                            const char* filename) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto dataset = reinterpret_cast<Dataset*>(handle);
   dataset->SaveBinaryFile(filename);
+  dataset_save_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
 int LGBM_DatasetDumpText(DatasetHandle handle,
                            const char* filename) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto dataset = reinterpret_cast<Dataset*>(handle);
   dataset->DumpTextFile(filename);
+  dataset_save_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -1602,4 +1626,13 @@ std::pair<int, double> CSC_RowIterator::NextNonZero() {
   } else {
     return std::make_pair(-1, 0.0);
   }
+}
+
+int LGBM_WriteProfilingMetrics(const char* filename){
+  API_BEGIN();
+  auto file = fopen(filename, "wt");
+  fprintf(file, "dataset_load_time: %lf\n", dataset_load_time.count());
+  fprintf(file, "dataset_save_time: %lf\n", dataset_save_time.count());
+  fclose(file);
+  API_END();
 }
