@@ -280,6 +280,10 @@ class TestBasic(unittest.TestCase):
         X[range(0,100,2),:] = 0
         d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
         d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
+        d1bin = self.tempFileName()+'.bin'
+        d2bin = self.tempFileName()+'.bin'
+        d1.save_binary(d1bin)
+        d2.save_binary(d2bin)
         d1.add_data_from(d2)
         d1name = self.tempFileName()
         d1.dump_text(d1name)
@@ -287,5 +291,13 @@ class TestBasic(unittest.TestCase):
         dname = self.tempFileName()
         d.dump_text(dname)
         self.assertFilesEqual(d1name, dname)
+        #Sparse bins behave differently when loaded from binary, ensure that case is covered.
+        d1 = lgb.Dataset(d1bin).construct()
+        d2 = lgb.Dataset(d2bin).construct()
+        d1.add_data_from(d2)
+        d1.dump_text(d1name)
+        self.assertFilesEqual(d1name, dname)
         os.remove(d1name)
-        os.remove(dname)        
+        os.remove(dname)
+        os.remove(d1bin)
+        os.remove(d2bin)
