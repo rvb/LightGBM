@@ -726,8 +726,9 @@ void Dataset::DumpTextFile(const char* text_filename){
     fprintf(file, "%lf, ", i);
   }
   fprintf(file, "\n");
+  fprintf(file, "label");
   for(auto n : feature_names_){
-    fprintf(file, "%s, ", n.c_str());
+    fprintf(file, ", %s", n.c_str());
   }
   std::vector<std::unique_ptr<BinIterator>> iterators(num_total_features_);
   for(int j = 0; j < num_total_features_; j++){
@@ -739,13 +740,14 @@ void Dataset::DumpTextFile(const char* text_filename){
 	iterators[j] = std::move(sub_iter);
     }
   }
+  const label_t* labels = metadata_.label();
   for(data_size_t i = 0; i < num_data_; i++){
-    fprintf(file, "\n");
+    fprintf(file, "\n%f", labels[i]);
     for(int j = 0; j < num_total_features_; j++){
       if(used_feature_map_[j] < 0){
-	fprintf(file, "NA, ");
+	fprintf(file, ", NA");
       } else {
-	fprintf(file, "%d, ", iterators[j]->RawGet(i));
+	fprintf(file, ", %d", iterators[j]->RawGet(i));
       }
     }
   }
