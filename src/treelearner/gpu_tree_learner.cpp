@@ -5,6 +5,7 @@
 
 #include <LightGBM/utils/array_args.h>
 #include <LightGBM/network.h>
+#include <LightGBM/profiling.h>
 #include <LightGBM/bin.h>
 
 #include <algorithm>
@@ -973,6 +974,7 @@ bool GPUTreeLearner::ConstructGPUHistogramsAsync(
 }
 
 void GPUTreeLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_used, bool use_subtract) {
+  auto start_time = std::chrono::steady_clock::now();
   std::vector<int8_t> is_sparse_feature_used(num_features_, 0);
   std::vector<int8_t> is_dense_feature_used(num_features_, 0);
   #pragma omp parallel for schedule(static)
@@ -1067,6 +1069,7 @@ void GPUTreeLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_u
       }
     }
   }
+  learner_construct_histogram_time += std::chrono::steady_clock::now() - start_time;
 }
 
 void GPUTreeLearner::FindBestSplits() {

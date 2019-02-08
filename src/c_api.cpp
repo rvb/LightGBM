@@ -2,6 +2,7 @@
 
 #include <LightGBM/utils/openmp_wrapper.h>
 #include <LightGBM/utils/common.h>
+#include <LightGBM/profiling.h>
 #include <LightGBM/utils/random.h>
 #include <LightGBM/utils/threading.h>
 #include <LightGBM/utils/log.h>
@@ -14,8 +15,6 @@
 #include <LightGBM/prediction_early_stop.h>
 #include <LightGBM/network.h>
 
-#include <LightGBM/profiling.h>
-
 #include <cstdio>
 #include <vector>
 #include <string>
@@ -26,6 +25,13 @@
 #include <functional>
 
 #include "./application/predictor.hpp"
+
+duration_millis dataset_load_time;
+duration_millis dataset_save_time;
+duration_millis dataset_add_feature_time;
+duration_millis dataset_add_data_time;
+
+duration_millis learner_construct_histogram_time;
 
 namespace LightGBM {
 
@@ -1639,6 +1645,7 @@ int LGBM_WriteProfilingMetrics(const char* filename){
   fprintf(file, "dataset_add_feature_time: %lf\n", dataset_add_feature_time.count());
   fprintf(file, "dataset_load_time: %lf\n", dataset_load_time.count());
   fprintf(file, "dataset_save_time: %lf\n", dataset_save_time.count());
+  fprintf(file, "learner_construct_histogram_time: %lf\n", learner_construct_histogram_time.count());
   fclose(file);
   API_END();
 }
