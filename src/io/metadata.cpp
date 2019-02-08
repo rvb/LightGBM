@@ -533,8 +533,21 @@ size_t Metadata::SizesInByte() const  {
 void Metadata::Merge(const Metadata& other){
   label_.reserve(num_data_+other.num_data_);
   label_.insert(label_.end(), other.label_.begin(), other.label_.end());
+  auto my_weight = weights(), other_weight = other.weights();
+  if(my_weight != nullptr && other_weight == nullptr){
+    for(int i = 0; i < other.num_data_; i++){
+      weights_.push_back(1.0);
+    }
+  } else if(my_weight == nullptr && other_weight != nullptr){
+    for(int i = 0; i < num_data_; i++){
+      weights_.push_back(1.0);
+    }
+    weights_.insert(weights_.end(), other.weights_.begin(), other.weights_.end());
+  } else if(my_weight != nullptr && other_weight != nullptr){
+    weights_.insert(weights_.end(), other.weights_.begin(), other.weights_.end());
+  }
   num_data_ += other.num_data_;
-  //TODO: Anything not labels (query, weight, etc.)
+  //TODO: Anything not labels (query etc.)
 }
 
 }  // namespace LightGBM

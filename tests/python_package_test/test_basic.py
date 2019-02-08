@@ -242,15 +242,31 @@ class TestBasic(unittest.TestCase):
         X = np.random.random((1000,2))
         ref = lgb.Dataset(X).construct()
         X = np.random.random((100,2))
-        d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
-        d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
-        d1.add_data_from(d2)
-        d1name = self.tempFileName()
-        d1.dump_text(d1name)
-        d = lgb.Dataset(X, reference=ref).construct()
-        dname = self.tempFileName()
-        d.dump_text(dname)
-        self.assertFilesEqual(d1name, dname)
+        weight_sets = [
+            (None, None),
+            (None, np.random.random((50,))),
+            (np.random.random((50,)), None),
+            (np.random.random((50,)), np.random.random((50,)))]
+        for (w1, w2) in weight_sets:
+            d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
+            d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
+            if w1 is not None:
+                d1.set_weight(w1)
+            if w2 is not None:
+                d2.set_weight(w2)
+            d1.add_data_from(d2)
+            d1name = self.tempFileName()
+            d1.dump_text(d1name)
+            d = lgb.Dataset(X, reference=ref).construct()
+            if w1 is not None or w2 is not None:
+                if w1 is None:
+                    w1 = np.ones((50,))
+                if w2 is None:
+                    w2 = np.ones((50,))
+                d.set_weight(np.append(w1, w2))
+            dname = self.tempFileName()
+            d.dump_text(dname)
+            self.assertFilesEqual(d1name, dname)
         os.remove(d1name)
         os.remove(dname)
 
