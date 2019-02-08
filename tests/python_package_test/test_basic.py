@@ -317,3 +317,27 @@ class TestBasic(unittest.TestCase):
         os.remove(dname)
         os.remove(d1bin)
         os.remove(d2bin)
+
+    def test_add_data_same_booster_behaviour(self):
+        X = np.random.random((1000,2))
+        X[range(0,1000,2),:] = 0
+        ref = lgb.Dataset(X, params={'sparse_threshold': 0.3}).construct()
+        X = np.random.random((100,2))
+        X[range(0,100,2),:] = 0
+        d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
+        d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
+        d1.add_data_from(d2)
+        b1name = self.tempFileName()
+        d = lgb.Dataset(X, reference=ref).construct()
+        b1 = lgb.Booster(train_set=d1)
+        b = lgb.Booster(train_set=d)
+        for k in range(10):
+            b.update()
+            b1.update()
+        b1name = self.tempFileName()
+        bname = self.tempFileName()
+        b.save_model(bname)
+        b1.save_model(b1name)
+        self.assertFilesEqual(b1name, bname)
+        os.remove(b1name)
+        os.remove(bname)
