@@ -898,6 +898,16 @@ int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
   API_END();
 }
 
+int LGBM_DatasetAddDataFrom(DatasetHandle target,
+			    DatasetHandle source) {
+  API_BEGIN();
+  auto target_d = reinterpret_cast<Dataset*>(target);
+  auto source_d = reinterpret_cast<Dataset*>(source);
+  target_d->addDataFrom(source_d);
+  API_END();
+}
+
+
 // ---- start of booster
 
 int LGBM_BoosterCreate(const DatasetHandle train_data,

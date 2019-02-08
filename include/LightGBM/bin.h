@@ -419,6 +419,13 @@ public:
   virtual void FinishLoad() = 0;
 
   /*!
+  * \brief Copy the data from other to this bin
+  * \param other: The bin to copy from, must be the same type as this bin.
+  * TODO: Implement for all subclasses
+  */
+  virtual void Merge(const Bin* other){}
+
+  /*!
   * \brief Create object for bin data of one feature, will call CreateDenseBin or CreateSparseBin according to "is_sparse"
   * \param num_data Total number of data
   * \param num_bin Number of bin

@@ -586,6 +586,7 @@ public:
   Dataset(const Dataset&) = delete;
 
   void addFeaturesFrom(Dataset* other);
+  void addDataFrom(Dataset* other);
 
 private:
   std::string data_filename_;

@@ -354,6 +354,15 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetGetNumFeature(DatasetHandle handle,
 LIGHTGBM_C_EXPORT int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
 						  DatasetHandle source);
 
+/*!
+* \brief Add data from source to target.
+* \param target The handle of the dataset to add features to
+* \param source The handle of the dataset to take features from
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetAddDataFrom(DatasetHandle target,
+					      DatasetHandle source);
+
 // --- start Booster interfaces
 
 /*!

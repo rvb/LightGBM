@@ -1544,14 +1544,29 @@ class Dataset(object):
         other : Dataset
             The dataset to take features from
 
-        Returns
-        -------
-        self : The Dataset with the new features added
         """
         if self.handle is None or other.handle is None:
             raise ValueError('Both source and target datasets must be constructed before adding features')
         _safe_call(_LIB.LGBM_DatasetAddFeaturesFrom(self.handle, other.handle))
         other.handle = None
+
+    def add_data_from(self, other):
+        """Add data from other to self.
+
+        Both datasets must have been constructed before calling this method.
+        This method requires that the two data sets have identical features and histograms.
+        This is best ensured by creating both sets from the same reference.
+
+        Parameters
+        ----------
+        other : Dataset
+            The dataset to take features from
+
+        """
+        if self.handle is None or other.handle is None:
+            raise ValueError('Both source and target datasets must be constructed before adding features')
+        _safe_call(_LIB.LGBM_DatasetAddDataFrom(self.handle, other.handle))
+        
 
     def dump_text(self, fname):
         """Save this dataset to a text file.
