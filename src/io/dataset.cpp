@@ -1015,6 +1015,9 @@ void Dataset::addFeaturesFrom(Dataset* other){
 }
   
 void Dataset::addDataFrom(Dataset* other){
+  if(!CheckAlign(*other)){
+    throw std::runtime_error("addDataFrom requires data sets to match");
+  }
   for(auto i = 0; i < num_groups_; i++){
     feature_groups_[i]->Merge(other->feature_groups_[i].get());
   }
