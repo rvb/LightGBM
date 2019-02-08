@@ -370,6 +370,29 @@ public:
     }
   }
 
+  void Merge(const Bin* other){
+    auto other_bin = dynamic_cast<const SparseBin<VAL_T>*>(other);
+    //In theory, NextNonZero allows us to iterate through.
+    //Confirm that.
+    //If so, the easiest way to get this to work is to convert to (index, value) form,
+    //push on the new data in a shifted form, then call LoadFromPairs.
+    //As an optimisation, we can trust the (index, value) form in push_buffers_0 if it exists.
+    if(push_buffers_[0].size() == 0){
+      data_size_t cur_pos = 0;
+      data_size_t j = -1;
+      while(NextNonzero(&j, &cur_pos)){
+	push_buffers_[0].emplace_back(cur_pos, vals_[j]);
+      }
+    }
+    data_size_t cur_pos = 0;
+    data_size_t j = -1;
+    while(other_bin->NextNonzero(&j, &cur_pos)){
+      push_buffers_[0].emplace_back(cur_pos + num_data_, other_bin->vals_[j]);
+    }
+    num_data_ += other_bin->num_data_;
+    LoadFromPair(push_buffers_[0]);
+  }
+
   void CopySubset(const Bin* full_bin, const data_size_t* used_indices, data_size_t num_used_indices) override {
     auto other_bin = dynamic_cast<const SparseBin<VAL_T>*>(full_bin);
     deltas_.clear();

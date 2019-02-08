@@ -253,3 +253,39 @@ class TestBasic(unittest.TestCase):
         self.assertFilesEqual(d1name, dname)
         os.remove(d1name)
         os.remove(dname)
+
+    def test_add_data_from_dense4bit_bins(self):
+        X = np.random.random((1000,2))
+        ref = lgb.Dataset(X, params={'max_bins': 16}).construct()
+        sizes = [(15, 16), (16, 15), (16, 16), (15, 15)]
+        for (s1, s2) in sizes:
+            X = np.random.random((s1+s2,2))
+            d1 = lgb.Dataset(X[:s1,:], reference=ref).construct()
+            d2 = lgb.Dataset(X[s1:,:], reference=ref).construct()
+            d1.add_data_from(d2)
+            d1name = self.tempFileName()
+            d1.dump_text(d1name)
+            d = lgb.Dataset(X, reference=ref).construct()
+            dname = self.tempFileName()
+            d.dump_text(dname)
+            self.assertFilesEqual(d1name, dname)
+            os.remove(d1name)
+            os.remove(dname)
+
+    def test_add_data_from_sparse_bins(self):
+        X = np.random.random((1000,2))
+        X[range(0,1000,2),:] = 0
+        ref = lgb.Dataset(X, params={'sparse_threshold': 0.3}).construct()
+        X = np.random.random((100,2))
+        X[range(0,100,2),:] = 0
+        d1 = lgb.Dataset(X[:50,:], reference=ref).construct()
+        d2 = lgb.Dataset(X[50:,:], reference=ref).construct()
+        d1.add_data_from(d2)
+        d1name = self.tempFileName()
+        d1.dump_text(d1name)
+        d = lgb.Dataset(X, reference=ref).construct()
+        dname = self.tempFileName()
+        d.dump_text(dname)
+        self.assertFilesEqual(d1name, dname)
+        os.remove(d1name)
+        os.remove(dname)        
