@@ -725,8 +725,7 @@ void Dataset::DumpTextFile(const char* text_filename){
   for(auto i : feature_penalty_){
     fprintf(file, "%lf, ", i);
   }
-  fprintf(file, "\n");
-  fprintf(file, "label");
+  fprintf(file, "\nlabel, weight");
   for(auto n : feature_names_){
     fprintf(file, ", %s", n.c_str());
   }
@@ -741,8 +740,14 @@ void Dataset::DumpTextFile(const char* text_filename){
     }
   }
   const label_t* labels = metadata_.label();
+  const label_t* weight = metadata_.weights();
   for(data_size_t i = 0; i < num_data_; i++){
     fprintf(file, "\n%f", labels[i]);
+    if(weight == nullptr){
+      fprintf(file, ", NA");
+    } else {
+      fprintf(file, " %f", weight[i]);
+    }
     for(int j = 0; j < num_total_features_; j++){
       if(used_feature_map_[j] < 0){
 	fprintf(file, ", NA");
