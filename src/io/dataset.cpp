@@ -1016,11 +1016,10 @@ void Dataset::addFeaturesFrom(Dataset* other){
   
 void Dataset::addDataFrom(Dataset* other){
   for(auto i = 0; i < num_groups_; i++){
-    //TODO: Euhm, does this really allow us to take an owned pointer and keep ownership??
     feature_groups_[i]->Merge(other->feature_groups_[i].get());
   }
+  metadata_.Merge(other->metadata_);
   num_data_ += other->num_data_;
-  //TODO: Metadata
 }
 
 }  // namespace LightGBM

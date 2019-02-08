@@ -201,6 +201,8 @@ public:
   */
   inline int64_t num_init_score() const { return num_init_score_; }
 
+  void Merge(const Metadata& other);
+
   /*! \brief Disable copy */
   Metadata& operator=(const Metadata&) = delete;
   /*! \brief Disable copy */
