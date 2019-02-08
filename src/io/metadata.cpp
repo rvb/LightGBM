@@ -547,7 +547,25 @@ void Metadata::Merge(const Metadata& other){
     weights_.insert(weights_.end(), other.weights_.begin(), other.weights_.end());
   }
   num_data_ += other.num_data_;
-  //TODO: Anything not labels (query etc.)
+  {
+    auto my_query = query_boundaries(), other_query = other.query_boundaries();
+    if(my_query != nullptr && other_query != nullptr){
+      query_boundaries_.insert(query_boundaries_.end(), other.query_boundaries_.begin(), other.query_boundaries_.end());
+    } else if(my_query != nullptr || other_query != nullptr){
+      throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+    }
+  }
+  if(!queries_.empty() && !other.queries_.empty()){
+    queries_.insert(queries_.end(), other.queries_.begin(), other.queries_.end());      
+  } else if(!queries_.empty() || !other.queries_.empty()){
+    throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+  }
+  if(!query_weights_.empty() && !other.query_weights_.empty()){
+    query_weights_.insert(query_weights_.end(), other.query_weights_.begin(), other.query_weights_.end());      
+  } else if(!query_weights_.empty() || !other.query_weights_.empty()){
+    throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+  }
+  num_queries_ += other.num_queries_;
 }
 
 }  // namespace LightGBM
