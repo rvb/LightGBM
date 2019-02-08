@@ -915,19 +915,23 @@ int LGBM_DatasetGetNumFeature(DatasetHandle handle,
 int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
 				 DatasetHandle source) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto target_d = reinterpret_cast<Dataset*>(target);
   auto source_d = reinterpret_cast<Dataset*>(source);
   target_d->addFeaturesFrom(source_d);
   LGBM_DatasetFree(source_d);
+  dataset_add_feature_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
 int LGBM_DatasetAddDataFrom(DatasetHandle target,
 			    DatasetHandle source) {
   API_BEGIN();
+  auto start_time = std::chrono::steady_clock::now();
   auto target_d = reinterpret_cast<Dataset*>(target);
   auto source_d = reinterpret_cast<Dataset*>(source);
   target_d->addDataFrom(source_d);
+  dataset_add_data_time += std::chrono::steady_clock::now() - start_time;
   API_END();
 }
 
@@ -1631,6 +1635,8 @@ std::pair<int, double> CSC_RowIterator::NextNonZero() {
 int LGBM_WriteProfilingMetrics(const char* filename){
   API_BEGIN();
   auto file = fopen(filename, "wt");
+  fprintf(file, "dataset_add_data_time: %lf\n", dataset_add_data_time.count());
+  fprintf(file, "dataset_add_feature_time: %lf\n", dataset_add_feature_time.count());
   fprintf(file, "dataset_load_time: %lf\n", dataset_load_time.count());
   fprintf(file, "dataset_save_time: %lf\n", dataset_save_time.count());
   fclose(file);
