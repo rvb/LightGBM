@@ -1,5 +1,7 @@
 #include "parallel_tree_learner.h"
 
+#include <LightGBM/profiling.h>
+
 #include <cstring>
 
 #include <tuple>
@@ -164,7 +166,7 @@ template <typename TREELEARNER_T>
 void DataParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(const std::vector<int8_t>&, bool) {
   std::vector<SplitInfo> smaller_bests_per_thread(this->num_threads_, SplitInfo());
   std::vector<SplitInfo> larger_bests_per_thread(this->num_threads_, SplitInfo());
-
+  auto start_time = std::chrono::steady_clock::now();
   OMP_INIT_EX();
   #pragma omp parallel for schedule(static)
   for (int feature_index = 0; feature_index < this->num_features_; ++feature_index) {
@@ -242,6 +244,7 @@ void DataParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(const 
   if (this->larger_leaf_splits_->LeafIndex() >= 0) {
     this->best_split_per_leaf_[this->larger_leaf_splits_->LeafIndex()] = larger_best_split;
   }
+  learner_find_splits_from_histograms_time += std::chrono::steady_clock::now() - start_time;
 }
 
 template <typename TREELEARNER_T>

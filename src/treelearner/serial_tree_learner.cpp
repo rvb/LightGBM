@@ -470,9 +470,7 @@ void SerialTreeLearner::ConstructHistograms(const std::vector<int8_t>& is_featur
 }
 
 void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& is_feature_used, bool use_subtract) {
-  #ifdef TIMETAG
   auto start_time = std::chrono::steady_clock::now();
-  #endif
   std::vector<SplitInfo> smaller_best(num_threads_);
   std::vector<SplitInfo> larger_best(num_threads_);
   OMP_INIT_EX();
@@ -538,6 +536,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
   #ifdef TIMETAG
   find_split_time += std::chrono::steady_clock::now() - start_time;
   #endif
+  learner_find_splits_from_histograms_time += std::chrono::steady_clock::now() - start_time;
 }
 
 int32_t SerialTreeLearner::ForceSplits(Tree* tree, Json& forced_split_json, int* left_leaf,

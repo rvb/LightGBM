@@ -1,6 +1,7 @@
 #include "parallel_tree_learner.h"
 
 #include <LightGBM/utils/common.h>
+#include <LightGBM/profiling.h>
 
 #include <cstring>
 #include <tuple>
@@ -370,6 +371,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplits() {
 
 template <typename TREELEARNER_T>
 void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(const std::vector<int8_t>&, bool) {
+  auto start_time = std::chrono::steady_clock::now();
   std::vector<SplitInfo> smaller_bests_per_thread(this->num_threads_);
   std::vector<SplitInfo> larger_best_per_thread(this->num_threads_);
   // find best split from local aggregated histograms
@@ -457,6 +459,7 @@ void VotingParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(cons
   if (larger_best_split.feature >= 0 && larger_leaf_splits_global_->LeafIndex() >= 0) {
     this->best_split_per_leaf_[larger_leaf_splits_global_->LeafIndex()] = larger_best_split;
   }
+  learner_find_splits_from_histograms_time += std::chrono::steady_clock::now() - start_time;
 }
 
 template <typename TREELEARNER_T>

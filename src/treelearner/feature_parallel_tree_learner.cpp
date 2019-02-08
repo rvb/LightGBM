@@ -1,4 +1,5 @@
 #include "parallel_tree_learner.h"
+#include <LightGBM/profiling.h>
 
 #include <cstring>
 
@@ -51,6 +52,7 @@ void FeatureParallelTreeLearner<TREELEARNER_T>::BeforeTrain() {
 template <typename TREELEARNER_T>
 void FeatureParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(const std::vector<int8_t>& is_feature_used, bool use_subtract) {
   TREELEARNER_T::FindBestSplitsFromHistograms(is_feature_used, use_subtract);
+  auto start_time = std::chrono::steady_clock::now();
   SplitInfo smaller_best_split, larger_best_split;
   // get best split at smaller leaf
   smaller_best_split = this->best_split_per_leaf_[this->smaller_leaf_splits_->LeafIndex()];
@@ -65,6 +67,7 @@ void FeatureParallelTreeLearner<TREELEARNER_T>::FindBestSplitsFromHistograms(con
   if (this->larger_leaf_splits_->LeafIndex() >= 0) {
     this->best_split_per_leaf_[this->larger_leaf_splits_->LeafIndex()] = larger_best_split;
   }
+  learner_find_splits_from_histograms_time += std::chrono::steady_clock::now() - start_time;
 }
 
 // instantiate template classes, otherwise linker cannot find the code

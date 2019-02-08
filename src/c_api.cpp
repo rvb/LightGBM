@@ -32,6 +32,7 @@ duration_millis dataset_add_feature_time;
 duration_millis dataset_add_data_time;
 
 duration_millis learner_construct_histogram_time;
+duration_millis learner_find_splits_from_histograms_time;
 
 namespace LightGBM {
 
@@ -1646,6 +1647,7 @@ int LGBM_WriteProfilingMetrics(const char* filename){
   fprintf(file, "dataset_load_time: %lf\n", dataset_load_time.count());
   fprintf(file, "dataset_save_time: %lf\n", dataset_save_time.count());
   fprintf(file, "learner_construct_histogram_time: %lf\n", learner_construct_histogram_time.count());
+  fprintf(file, "learner_find_splits_from_histograms_time: %lf\n", learner_find_splits_from_histograms_time.count());
   fclose(file);
   API_END();
 }
