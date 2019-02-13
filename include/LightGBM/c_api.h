@@ -21,6 +21,7 @@ typedef void* BoosterHandle;
 #define C_API_DTYPE_FLOAT64 (1)
 #define C_API_DTYPE_INT32   (2)
 #define C_API_DTYPE_INT64   (3)
+#define C_API_DTYPE_INT8    (4)
 
 #define C_API_PREDICT_NORMAL     (0)
 #define C_API_PREDICT_RAW_SCORE  (1)
@@ -269,13 +270,22 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetGetFeatureNames(
 LIGHTGBM_C_EXPORT int LGBM_DatasetFree(DatasetHandle handle);
 
 /*!
-* \brief save dateset to binary file
+* \brief save dataset to binary file
 * \param handle a instance of dataset
 * \param filename file name
 * \return 0 when succeed, -1 when failure happens
 */
 LIGHTGBM_C_EXPORT int LGBM_DatasetSaveBinary(DatasetHandle handle,
                                              const char* filename);
+
+/*!
+* \brief save dataset to text file, intended for debugging use only
+* \param handle a instance of dataset
+* \param filename file name
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetDumpText(DatasetHandle handle,
+					   const char* filename);
 
 /*!
 * \brief set vector to a content in info
@@ -309,6 +319,14 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetGetField(DatasetHandle handle,
                                            const void** out_ptr,
                                            int* out_type);
 
+
+/*!
+* \brief Update parameters for a Dataset
+* \param handle a instance of data matrix
+* \param parameters parameters
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetUpdateParam(DatasetHandle handle, const char* parameters);
+
 /*!
 * \brief get number of data.
 * \param handle the handle to the dataset
@@ -326,6 +344,24 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetGetNumData(DatasetHandle handle,
 */
 LIGHTGBM_C_EXPORT int LGBM_DatasetGetNumFeature(DatasetHandle handle,
                                                 int* out);
+
+/*!
+* \brief Add features from source to target, then free source
+* \param target The handle of the dataset to add features to
+* \param source The handle of the dataset to take features from
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
+						  DatasetHandle source);
+
+/*!
+* \brief Add data from source to target.
+* \param target The handle of the dataset to add features to
+* \param source The handle of the dataset to take features from
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetAddDataFrom(DatasetHandle target,
+					      DatasetHandle source);
 
 // --- start Booster interfaces
 
@@ -805,13 +841,13 @@ LIGHTGBM_C_EXPORT int LGBM_NetworkInit(const char* machines,
 */
 LIGHTGBM_C_EXPORT int LGBM_NetworkFree();
 
-LIGHTGBM_C_EXPORT int LGBM_NetworkInitWithFunctions(int num_machines, int rank, 
-                                                    void* reduce_scatter_ext_fun, 
+LIGHTGBM_C_EXPORT int LGBM_NetworkInitWithFunctions(int num_machines, int rank,
+                                                    void* reduce_scatter_ext_fun,
                                                     void* allgather_ext_fun);
 
 
 #if defined(_MSC_VER)
-#define THREAD_LOCAL __declspec(thread) 
+#define THREAD_LOCAL __declspec(thread)
 #else
 #define THREAD_LOCAL thread_local
 #endif
@@ -823,4 +859,4 @@ inline void LGBM_SetLastError(const char* msg) {
   std::strcpy(LastErrorMsg(), msg);
 }
 
-#endif // LIGHTGBM_C_API_H_
+#endif  // LIGHTGBM_C_API_H_

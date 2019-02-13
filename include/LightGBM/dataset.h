@@ -117,8 +117,7 @@ public:
   * \param idx Index of this record
   * \param value Label value of this record
   */
-  inline void SetLabelAt(data_size_t idx, label_t value)
-  {
+  inline void SetLabelAt(data_size_t idx, label_t value) {
     label_[idx] = value;
   }
 
@@ -127,8 +126,7 @@ public:
   * \param idx Index of this record
   * \param value Weight value of this record
   */
-  inline void SetWeightAt(data_size_t idx, label_t value)
-  {
+  inline void SetWeightAt(data_size_t idx, label_t value) {
     weights_[idx] = value;
   }
 
@@ -137,8 +135,7 @@ public:
   * \param idx Index of this record
   * \param value Query Id value of this record
   */
-  inline void SetQueryAt(data_size_t idx, data_size_t value)
-  {
+  inline void SetQueryAt(data_size_t idx, data_size_t value) {
     queries_[idx] = static_cast<data_size_t>(value);
   }
 
@@ -204,6 +201,8 @@ public:
   */
   inline int64_t num_init_score() const { return num_init_score_; }
 
+  void Merge(const Metadata& other);
+
   /*! \brief Disable copy */
   Metadata& operator=(const Metadata&) = delete;
   /*! \brief Disable copy */
@@ -251,7 +250,6 @@ private:
 /*! \brief Interface for Parser */
 class Parser {
 public:
-
   /*! \brief virtual destructor */
   virtual ~Parser() {}
 
@@ -390,10 +388,14 @@ public:
 
   LIGHTGBM_EXPORT bool GetIntField(const char* field_name, data_size_t* out_len, const int** out_ptr);
 
+  LIGHTGBM_EXPORT bool GetInt8Field(const char* field_name, data_size_t* out_len, const int8_t** out_ptr);
+
   /*!
   * \brief Save current dataset into binary file, will save to "filename.bin"
   */
   LIGHTGBM_EXPORT void SaveBinaryFile(const char* bin_filename);
+
+  LIGHTGBM_EXPORT void DumpTextFile(const char* text_filename);
 
   LIGHTGBM_EXPORT void CopyFeatureMapperFrom(const Dataset* dataset);
 
@@ -463,7 +465,7 @@ public:
       return false;
     }
   }
-  
+
   inline int FeatureGroupNumBin(int group) const {
     return feature_groups_[group]->num_total_bin_;
   }
@@ -478,7 +480,7 @@ public:
     const int group = feature2group_[i];
     return feature_groups_[group]->bin_data_.get();
   }
-  
+
   inline const Bin* FeatureGroupBin(int group) const {
     return feature_groups_[group]->bin_data_.get();
   }
@@ -496,7 +498,7 @@ public:
   inline BinIterator* FeatureGroupIterator(int group) const {
     return feature_groups_[group]->FeatureGroupIterator();
   }
-  
+
   inline double RealThreshold(int i, uint32_t threshold) const {
     const int group = feature2group_[i];
     const int sub_feature = feature2subfeature_[i];
@@ -550,13 +552,13 @@ public:
     feature_names_ = std::vector<std::string>(feature_names);
     // replace ' ' in feature_names with '_'
     bool spaceInFeatureName = false;
-    for (auto& feature_name: feature_names_){
-      if (feature_name.find(' ') != std::string::npos){
+    for (auto& feature_name : feature_names_) {
+      if (feature_name.find(' ') != std::string::npos) {
         spaceInFeatureName = true;
         std::replace(feature_name.begin(), feature_name.end(), ' ', '_');
       }
     }
-    if (spaceInFeatureName){
+    if (spaceInFeatureName) {
       Log::Warning("Find whitespaces in feature_names, replace with underlines");
     }
   }
@@ -575,6 +577,8 @@ public:
     return bufs;
   }
 
+  void ResetConfig(const char* parameters);
+
   /*! \brief Get Number of data */
   inline data_size_t num_data() const { return num_data_; }
 
@@ -582,6 +586,9 @@ public:
   Dataset& operator=(const Dataset&) = delete;
   /*! \brief Disable copy */
   Dataset(const Dataset&) = delete;
+
+  void addFeaturesFrom(Dataset* other);
+  void addDataFrom(Dataset* other);
 
 private:
   std::string data_filename_;
@@ -615,6 +622,11 @@ private:
   std::vector<int8_t> monotone_types_;
   std::vector<double> feature_penalty_;
   bool is_finish_load_;
+  int max_bin_;
+  int bin_construct_sample_cnt_;
+  int min_data_in_bin_;
+  bool use_missing_;
+  bool zero_as_missing_;
 };
 
 }  // namespace LightGBM

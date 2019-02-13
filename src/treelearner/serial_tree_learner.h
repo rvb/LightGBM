@@ -103,9 +103,8 @@ protected:
 
   /* Force splits with forced_split_json dict and then return num splits forced.*/
   virtual int32_t ForceSplits(Tree* tree, Json& forced_split_json, int* left_leaf,
-                              int* right_leaf, int* cur_depth, 
+                              int* right_leaf, int* cur_depth,
                               bool *aborted_last_force_split);
-
 
   /*!
   * \brief Get the number of data in a leaf
@@ -113,6 +112,9 @@ protected:
   * \return The number of data in the leaf_idx leaf
   */
   inline virtual data_size_t GetGlobalDataCountInLeaf(int leaf_idx) const;
+
+  double CalculateOndemandCosts(int feature_index, int leaf_index);
+
   /*! \brief number of data */
   data_size_t num_data_;
   /*! \brief number of features */
@@ -170,6 +172,9 @@ protected:
   int num_threads_;
   std::vector<int> ordered_bin_indices_;
   bool is_constant_hessian_;
+
+  std::vector<bool> feature_used;
+  std::vector<uint32_t> feature_used_in_data;
 };
 
 inline data_size_t SerialTreeLearner::GetGlobalDataCountInLeaf(int leaf_idx) const {

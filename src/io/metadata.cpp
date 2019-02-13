@@ -125,7 +125,6 @@ void Metadata::Init(const Metadata& fullset, const data_size_t* used_indices, da
   } else {
     num_queries_ = 0;
   }
-
 }
 
 void Metadata::PartitionLabel(const std::vector<data_size_t>& used_indices) {
@@ -516,7 +515,6 @@ void Metadata::SaveBinaryToFile(const VirtualFileWriter* writer) const {
   if (!query_boundaries_.empty()) {
     writer->Write(query_boundaries_.data(), sizeof(data_size_t) * (num_queries_ + 1));
   }
-
 }
 
 size_t Metadata::SizesInByte() const  {
@@ -532,5 +530,42 @@ size_t Metadata::SizesInByte() const  {
   return size;
 }
 
+void Metadata::Merge(const Metadata& other){
+  label_.reserve(num_data_+other.num_data_);
+  label_.insert(label_.end(), other.label_.begin(), other.label_.end());
+  auto my_weight = weights(), other_weight = other.weights();
+  if(my_weight != nullptr && other_weight == nullptr){
+    for(int i = 0; i < other.num_data_; i++){
+      weights_.push_back(1.0);
+    }
+  } else if(my_weight == nullptr && other_weight != nullptr){
+    for(int i = 0; i < num_data_; i++){
+      weights_.push_back(1.0);
+    }
+    weights_.insert(weights_.end(), other.weights_.begin(), other.weights_.end());
+  } else if(my_weight != nullptr && other_weight != nullptr){
+    weights_.insert(weights_.end(), other.weights_.begin(), other.weights_.end());
+  }
+  num_data_ += other.num_data_;
+  {
+    auto my_query = query_boundaries(), other_query = other.query_boundaries();
+    if(my_query != nullptr && other_query != nullptr){
+      query_boundaries_.insert(query_boundaries_.end(), other.query_boundaries_.begin(), other.query_boundaries_.end());
+    } else if(my_query != nullptr || other_query != nullptr){
+      throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+    }
+  }
+  if(!queries_.empty() && !other.queries_.empty()){
+    queries_.insert(queries_.end(), other.queries_.begin(), other.queries_.end());      
+  } else if(!queries_.empty() || !other.queries_.empty()){
+    throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+  }
+  if(!query_weights_.empty() && !other.query_weights_.empty()){
+    query_weights_.insert(query_weights_.end(), other.query_weights_.begin(), other.query_weights_.end());      
+  } else if(!query_weights_.empty() || !other.query_weights_.empty()){
+    throw std::runtime_error("Can only add_data_from a dataset if both the source and target contain queries, or neither contain queries.");
+  }
+  num_queries_ += other.num_queries_;
+}
 
 }  // namespace LightGBM

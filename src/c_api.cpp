@@ -37,7 +37,6 @@ inline int LGBM_APIHandleException(const std::string& ex) {
 }
 
 #define API_BEGIN() try {
-
 #define API_END() } \
 catch(std::exception& ex) { return LGBM_APIHandleException(ex); } \
 catch(std::string& ex) { return LGBM_APIHandleException(ex); } \
@@ -71,13 +70,12 @@ public:
     if (config_.tree_learner == std::string("feature")) {
       Log::Fatal("Do not support feature parallel in c api");
     }
-    if (Network::num_machines() == 1 && config_.tree_learner != std::string("serial")) {
+    if (Network::num_machines() == 1 && config_.tree_learner != std::string("serial") && config_.tree_learner != std::string("cegb")) {
       Log::Warning("Only find one worker, will switch to serial tree learner");
       config_.tree_learner = "serial";
     }
     boosting_->Init(&config_, train_data_, objective_fun_.get(),
                     Common::ConstPtrInVectorWrapper<Metric>(train_metric_));
-
   }
 
   void MergeFrom(const Booster* other) {
@@ -86,7 +84,6 @@ public:
   }
 
   ~Booster() {
-
   }
 
   void CreateObjectiveAndMetrics() {
@@ -158,7 +155,6 @@ public:
     }
 
     boosting_->ResetConfig(&config_);
-
   }
 
   void AddValidData(const Dataset* valid_data) {
@@ -275,7 +271,7 @@ public:
     return boosting_->SaveModelToString(start_iteration, num_iteration);
   }
 
-  std::string DumpModel(int start_iteration,int num_iteration) {
+  std::string DumpModel(int start_iteration, int num_iteration) {
     return boosting_->DumpModel(start_iteration, num_iteration);
   }
 
@@ -328,7 +324,6 @@ public:
   const Boosting* GetBoosting() const { return boosting_.get(); }
 
 private:
-
   const Dataset* train_data_;
   std::unique_ptr<Boosting> boosting_;
   /*! \brief All configs */
@@ -343,7 +338,7 @@ private:
   std::mutex mutex_;
 };
 
-}
+}  // namespace LightGBM
 
 using namespace LightGBM;
 
@@ -394,7 +389,7 @@ int LGBM_DatasetCreateFromFile(const char* filename,
   if (config.num_threads > 0) {
     omp_set_num_threads(config.num_threads);
   }
-  DatasetLoader loader(config,nullptr, 1, filename);
+  DatasetLoader loader(config, nullptr, 1, filename);
   if (reference == nullptr) {
     if (Network::num_machines() == 1) {
       *out = loader.LoadFromFile(filename, "");
@@ -545,7 +540,7 @@ int LGBM_DatasetCreateFromMats(int32_t nmat,
   for (int j = 0; j < nmat; ++j) {
     get_row_fun.push_back(RowFunctionFromDenseMatric(data[j], nrow[j], ncol, data_type, is_row_major));
   }
-  
+
   if (reference == nullptr) {
     // sample data first
     Random rand(config.data_random_seed);
@@ -563,7 +558,7 @@ int LGBM_DatasetCreateFromMats(int32_t nmat,
         offset += nrow[j];
         ++j;
       }
-      
+
       auto row = get_row_fun[j](static_cast<int>(idx - offset));
       for (size_t k = 0; k < row.size(); ++k) {
         if (std::fabs(row[k]) > kZeroThreshold || std::isnan(row[k])) {
@@ -817,6 +812,14 @@ int LGBM_DatasetSaveBinary(DatasetHandle handle,
   API_END();
 }
 
+int LGBM_DatasetDumpText(DatasetHandle handle,
+                           const char* filename) {
+  API_BEGIN();
+  auto dataset = reinterpret_cast<Dataset*>(handle);
+  dataset->DumpTextFile(filename);
+  API_END();
+}
+
 int LGBM_DatasetSetField(DatasetHandle handle,
                          const char* field_name,
                          const void* field_data,
@@ -853,9 +856,19 @@ int LGBM_DatasetGetField(DatasetHandle handle,
   } else if (dataset->GetDoubleField(field_name, out_len, reinterpret_cast<const double**>(out_ptr))) {
     *out_type = C_API_DTYPE_FLOAT64;
     is_success = true;
+  } else if(dataset->GetInt8Field(field_name, out_len, reinterpret_cast<const int8_t**>(out_ptr))){
+    *out_type = C_API_DTYPE_INT8;
+    is_success = true;
   }
   if (!is_success) { throw std::runtime_error("Field not found"); }
   if (*out_ptr == nullptr) { *out_len = 0; }
+  API_END();
+}
+
+int LGBM_DatasetUpdateParam(DatasetHandle handle, const char* parameters) {
+  API_BEGIN();
+  auto dataset = reinterpret_cast<Dataset*>(handle);
+  dataset->ResetConfig(parameters);
   API_END();
 }
 
@@ -874,6 +887,26 @@ int LGBM_DatasetGetNumFeature(DatasetHandle handle,
   *out = dataset->num_total_features();
   API_END();
 }
+
+int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
+				 DatasetHandle source) {
+  API_BEGIN();
+  auto target_d = reinterpret_cast<Dataset*>(target);
+  auto source_d = reinterpret_cast<Dataset*>(source);
+  target_d->addFeaturesFrom(source_d);
+  LGBM_DatasetFree(source_d);
+  API_END();
+}
+
+int LGBM_DatasetAddDataFrom(DatasetHandle target,
+			    DatasetHandle source) {
+  API_BEGIN();
+  auto target_d = reinterpret_cast<Dataset*>(target);
+  auto source_d = reinterpret_cast<Dataset*>(source);
+  target_d->addDataFrom(source_d);
+  API_END();
+}
+
 
 // ---- start of booster
 
@@ -1242,7 +1275,7 @@ int LGBM_BoosterSaveModel(BoosterHandle handle,
 int LGBM_BoosterSaveModelToString(BoosterHandle handle,
                                   int start_iteration,
                                   int num_iteration,
-                                  int64_t buffer_len, 
+                                  int64_t buffer_len,
                                   int64_t* out_len,
                                   char* out_str) {
   API_BEGIN();

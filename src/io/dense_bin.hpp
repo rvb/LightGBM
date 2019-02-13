@@ -310,6 +310,15 @@ public:
     return sizeof(VAL_T) * num_data_;
   }
 
+  void Merge(const Bin* other){
+    auto other_bin = dynamic_cast<const DenseBin<VAL_T>*>(other);
+    data_.reserve(num_data_+other_bin->num_data_);
+    for(int i = 0; i < other_bin->num_data_; i++){
+      data_.push_back(other_bin->data_[i]);
+    }
+    num_data_ += other_bin->num_data_;
+  }
+
 protected:
   data_size_t num_data_;
   std::vector<VAL_T> data_;

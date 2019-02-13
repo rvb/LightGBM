@@ -139,13 +139,17 @@ public:
     bin_data_->CopySubset(full_feature->bin_data_.get(), used_indices, num_used_indices);
   }
 
+  inline void Merge(const FeatureGroup* other){
+    bin_data_->Merge(other->bin_data_.get());
+  }
+
   inline BinIterator* SubFeatureIterator(int sub_feature) {
     uint32_t min_bin = bin_offsets_[sub_feature];
     uint32_t max_bin = bin_offsets_[sub_feature + 1] - 1;
     uint32_t default_bin = bin_mappers_[sub_feature]->GetDefaultBin();
     return bin_data_->GetIterator(min_bin, max_bin, default_bin);
   }
-  
+
   /*!
    * \brief Returns a BinIterator that can access the entire feature group's raw data.
    *        The RawGet() function of the iterator should be called for best efficiency.
@@ -176,7 +180,6 @@ public:
     } else {
       return bin_data_->SplitCategorical(min_bin, max_bin, default_bin, threshold, num_threshold, data_indices, num_data, lte_indices, gt_indices);
     }
-
   }
   /*!
   * \brief From bin to feature value
