@@ -106,12 +106,13 @@ def cint32_array_to_numpy(cptr, length):
     else:
         raise RuntimeError('Expected int pointer')
 
+
 def cint8_array_to_numpy(cptr, length):
     """Convert a ctypes int pointer array to a numpy array."""
     if isinstance(cptr, ctypes.POINTER(ctypes.c_int8)):
         return np.fromiter(cptr, dtype=np.int8, count=length)
     else:
-        raise RuntimeError('Expected int pointer')    
+        raise RuntimeError('Expected int pointer')
 
 
 def c_str(string):
@@ -1397,7 +1398,7 @@ class Dataset(object):
         return self.weight
 
     def get_feature_penalty(self):
-        """Get the feature penalty of the Dataset
+        """Get the feature penalty of the data set.
 
         Returns
         -------
@@ -1409,7 +1410,7 @@ class Dataset(object):
         return self.feature_penalty
 
     def get_monotone_types(self):
-        """Get the monotone types of the data set
+        """Get the monotone types of the data set.
 
         Returns
         -------
@@ -1548,7 +1549,6 @@ class Dataset(object):
         if self.handle is None or other.handle is None:
             raise ValueError('Both source and target datasets must be constructed before adding features')
         _safe_call(_LIB.LGBM_DatasetAddFeaturesFrom(self.handle, other.handle))
-        other.handle = None
 
     def add_data_from(self, other):
         """Add data from other to self.
@@ -1572,7 +1572,7 @@ class Dataset(object):
         """Save this dataset to a text file.
 
         This format cannot be loaded back in by LightGBM, but is useful to debug data set
-        manipulations. 
+        manipulations.
 
         Parameters
         ----------
@@ -1583,6 +1583,7 @@ class Dataset(object):
         _safe_call(_LIB.LGBM_DatasetDumpText(
             self.construct().handle,
             c_str(fname)))
+
 
 class Booster(object):
     """Booster in LightGBM."""

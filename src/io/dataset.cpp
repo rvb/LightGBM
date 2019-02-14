@@ -729,15 +729,12 @@ void Dataset::DumpTextFile(const char* text_filename){
   for(auto n : feature_names_){
     fprintf(file, ", %s", n.c_str());
   }
-  std::vector<std::unique_ptr<BinIterator>> iterators(num_total_features_);
-  for(int j = 0; j < num_total_features_; j++){
-    if(used_feature_map_[j] >= 0){
-	auto real_feature_idx = used_feature_map_[j];
-	auto group_idx = feature2group_[real_feature_idx];
-	auto sub_idx = feature2subfeature_[real_feature_idx];
-	std::unique_ptr<BinIterator> sub_iter(feature_groups_[group_idx]->SubFeatureIterator(sub_idx));
-	iterators[j] = std::move(sub_iter);
-    }
+  std::vector<std::unique_ptr<BinIterator>> iterators;
+  iterators.reserve(num_features_);
+  for(int j = 0; j < num_features_; j++){
+    auto group_idx = feature2group_[j];
+    auto sub_idx = feature2subfeature_[j];
+    iterators.emplace_back(feature_groups_[group_idx]->SubFeatureIterator(sub_idx));
   }
   const label_t* labels = metadata_.label();
   const label_t* weight = metadata_.weights();
@@ -749,10 +746,11 @@ void Dataset::DumpTextFile(const char* text_filename){
       fprintf(file, " %f", weight[i]);
     }
     for(int j = 0; j < num_total_features_; j++){
-      if(used_feature_map_[j] < 0){
-	fprintf(file, ", NA");
+      auto inner_feature_idx = used_feature_map_[j];
+      if(inner_feature_idx < 0){
+	fprintf(file, "NA, ");
       } else {
-	fprintf(file, ", %d", iterators[j]->RawGet(i));
+	fprintf(file, "%d, ", iterators[inner_feature_idx]->RawGet(i));
       }
     }
   }
@@ -952,6 +950,7 @@ void Dataset::FixHistogram(int feature_idx, double sum_gradient, double sum_hess
 
 template<typename T>
 void PushVector(std::vector<T>& dest, const std::vector<T>& src){
+  dest.reserve(dest.size() + src.size());
   for(auto i : src){
     dest.push_back(i);
   }
@@ -959,6 +958,7 @@ void PushVector(std::vector<T>& dest, const std::vector<T>& src){
 
 template<typename T>
 void PushOffset(std::vector<T>& dest, const std::vector<T>& src, const T& offset){
+  dest.reserve(dest.size() + src.size());
   for(auto i : src){
     dest.push_back(i + offset);
   }
@@ -987,8 +987,9 @@ void Dataset::addFeaturesFrom(Dataset* other){
   PushVector(feature_names_, other->feature_names_);
   PushVector(feature2subfeature_, other->feature2subfeature_);
   PushVector(group_feature_cnt_, other->group_feature_cnt_);
+  feature_groups_.reserve(other->feature_groups_.size());
   for(auto& fg : other->feature_groups_){
-    feature_groups_.push_back(std::move(fg));
+    feature_groups_.emplace_back(new FeatureGroup(*fg));
   }
   for(auto feature_idx : other->used_feature_map_){
     if(feature_idx >= 0){

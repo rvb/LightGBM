@@ -20,7 +20,7 @@ const size_t kNumFastIndex = 64;
 
 template <typename VAL_T>
 class SparseBinIterator: public BinIterator {
-public:
+ public:
   SparseBinIterator(const SparseBin<VAL_T>* bin_data,
     uint32_t min_bin, uint32_t max_bin, uint32_t default_bin)
     : bin_data_(bin_data), min_bin_(static_cast<VAL_T>(min_bin)),
@@ -52,7 +52,7 @@ public:
 
   inline void Reset(data_size_t idx) override;
 
-private:
+ private:
   const SparseBin<VAL_T>* bin_data_;
   data_size_t cur_pos_;
   data_size_t i_delta_;
@@ -67,7 +67,7 @@ class OrderedSparseBin;
 
 template <typename VAL_T>
 class SparseBin: public Bin {
-public:
+ public:
   friend class SparseBinIterator<VAL_T>;
   friend class OrderedSparseBin<VAL_T>;
 
@@ -430,7 +430,14 @@ public:
     GetFastIndex();
   }
 
-protected:
+  SparseBin<VAL_T>* Clone() override;
+
+ protected:
+  SparseBin<VAL_T>(const SparseBin<VAL_T>& other)
+    : num_data_(other.num_data_), deltas_(other.deltas_), vals_(other.vals_),
+      num_vals_(other.num_vals_), push_buffers_(other.push_buffers_),
+      fast_index_(other.fast_index_), fast_index_shift_(other.fast_index_shift_){}
+
   data_size_t num_data_;
   std::vector<uint8_t> deltas_;
   std::vector<VAL_T> vals_;
@@ -439,6 +446,11 @@ protected:
   std::vector<std::pair<data_size_t, data_size_t>> fast_index_;
   data_size_t fast_index_shift_;
 };
+
+template<typename VAL_T>
+SparseBin<VAL_T>* SparseBin<VAL_T>::Clone(){
+  return new SparseBin(*this);
+}
 
 template <typename VAL_T>
 inline uint32_t SparseBinIterator<VAL_T>::RawGet(data_size_t idx) {
