@@ -322,6 +322,10 @@ class DenseBin: public Bin {
 
  DenseBin<VAL_T>* Clone() override;
 
+ void reserve(data_size_t num_data){
+   data_.reserve(num_data);
+ }
+
  private:
   data_size_t num_data_;
   std::vector<VAL_T> data_;

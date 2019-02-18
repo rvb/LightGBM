@@ -1142,4 +1142,17 @@ std::string DatasetLoader::CheckCanLoadFromBin(const char* filename) {
   }
 }
 
+data_size_t DatasetLoader::LoadNumDataFromBinFile(const char* bin_filename){
+  auto reader = VirtualFileReader::Make(bin_filename);
+  if(!reader->Init()){
+    Log::Fatal("Could not read binary data from %s", bin_filename);
+  }
+  size_t size_of_token = std::strlen(Dataset::binary_file_token);
+  size_t buffer_size = size_of_token + sizeof(size_t) + sizeof(data_size_t);
+  auto buffer = std::vector<char>(buffer_size);
+  reader->Read(buffer.data(), buffer_size);
+  auto mem_ptr = buffer.data()+size_of_token+sizeof(size_t);
+  return *(reinterpret_cast<data_size_t*>(mem_ptr));
+}
+
 }  // namespace LightGBM

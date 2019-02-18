@@ -907,7 +907,29 @@ int LGBM_DatasetAddDataFrom(DatasetHandle target,
   API_END();
 }
 
-
+int LGBM_DatasetConcatenate(const char** filenames,
+			    int n,
+			    DatasetHandle* out){
+  API_BEGIN();
+  if(n < 1){
+    throw std::runtime_error("DatasetConcatenate requires at least 1 dataset to concatenate.");
+  }
+  Config config;
+  DatasetLoader loader(config, nullptr, 1, nullptr);
+  Dataset* ret = loader.LoadFromFile(filenames[0], nullptr);
+  data_size_t total_data = ret->num_data();
+  for(int i = 1; i < n; i++){
+    total_data += loader.LoadNumDataFromBinFile(filenames[i]);
+  }
+  ret->reserve(total_data);
+  for(int i = 1; i < n; i++){
+    Dataset* next = loader.LoadFromFile(filenames[i], nullptr);
+    ret->addDataFrom(next);
+    delete next;
+  }
+  *out = ret;
+  API_END();
+}
 // ---- start of booster
 
 int LGBM_BoosterCreate(const DatasetHandle train_data,

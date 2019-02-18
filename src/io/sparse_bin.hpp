@@ -432,6 +432,8 @@ class SparseBin: public Bin {
 
   SparseBin<VAL_T>* Clone() override;
 
+  void reserve(data_size_t num_data){}
+
  protected:
   SparseBin<VAL_T>(const SparseBin<VAL_T>& other)
     : num_data_(other.num_data_), deltas_(other.deltas_), vals_(other.vals_),

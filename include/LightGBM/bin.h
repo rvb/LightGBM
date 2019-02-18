@@ -459,6 +459,11 @@ class Bin {
   * \brief Deep copy the bin
   */
   virtual Bin* Clone() = 0;
+
+  /*!
+  * \brief Reserve space for num_data_ data points in the bin
+  */
+  virtual void reserve(data_size_t num_data) = 0;
 };
 
 inline uint32_t BinMapper::ValueToBin(double value) const {

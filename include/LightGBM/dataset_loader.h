@@ -28,6 +28,8 @@ class DatasetLoader {
   /*! \brief Disable copy */
   DatasetLoader(const DatasetLoader&) = delete;
 
+  data_size_t LoadNumDataFromBinFile(const char* data_filename);
+
  private:
   Dataset* LoadFromBinFile(const char* data_filename, const char* bin_filename, int rank, int num_machines, int* num_global_data, std::vector<data_size_t>* used_data_indices);
 

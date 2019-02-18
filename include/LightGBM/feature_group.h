@@ -230,6 +230,11 @@ class FeatureGroup {
     bin_data_.reset(other.bin_data_->Clone());
   }
 
+  /*! \brief Reserve space for num_data data points */
+  void reserve(data_size_t num_data){
+    bin_data_->reserve(num_data);
+  }
+
  private:
   /*! \brief Number of features */
   int num_feature_;

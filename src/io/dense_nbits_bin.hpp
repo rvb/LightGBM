@@ -385,6 +385,10 @@ class Dense4bitsBin : public Bin {
 
   Dense4bitsBin* Clone() override;
 
+  void reserve(data_size_t num_data){
+    data_.reserve((num_data+1)/2);
+  }
+
  protected:
   Dense4bitsBin(const Dense4bitsBin& other)
     : num_data_(other.num_data_), data_(other.data_), buf_(other.buf_){}

@@ -796,6 +796,14 @@ class Dataset(object):
                 c_str(params_str),
                 ref_dataset,
                 ctypes.byref(self.handle)))
+        elif isinstance(data, list) and len(data) > 0 and all(isinstance(x, string_type) for x in data):
+            strs = (ctypes.c_char_p * len(data))()
+            for i, x in enumerate(data):
+                strs[i] = c_str(data[i])
+            self.handle = ctypes.c_void_p()
+            _safe_call(_LIB.LGBM_DatasetConcatenate(strs,
+                                                    len(data),
+                                                    ctypes.byref(self.handle)))
         elif isinstance(data, scipy.sparse.csr_matrix):
             self.__init_from_csr(data, params_str, ref_dataset)
         elif isinstance(data, scipy.sparse.csc_matrix):

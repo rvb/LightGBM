@@ -590,6 +590,9 @@ class Dataset {
   void addFeaturesFrom(Dataset* other);
   void addDataFrom(Dataset* other);
 
+  /*! \brief Reserve space in feature group bins for num_data data points */
+  void reserve(data_size_t num_data);
+
  private:
   std::string data_filename_;
   /*! \brief Store used features */

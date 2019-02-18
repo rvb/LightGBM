@@ -363,6 +363,17 @@ LIGHTGBM_C_EXPORT int LGBM_DatasetAddFeaturesFrom(DatasetHandle target,
 LIGHTGBM_C_EXPORT int LGBM_DatasetAddDataFrom(DatasetHandle target,
 					      DatasetHandle source);
 
+/*!
+* \brief Concatenate data sets from n binary files
+* \param filenames pointer to an array of filenames
+* \param n the number of data files to work on
+* \param out Dataset pointer to write to
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_DatasetConcatenate(const char** filenames,
+					      int n,
+					      DatasetHandle* out);
+
 // --- start Booster interfaces
 
 /*!
