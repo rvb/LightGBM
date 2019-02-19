@@ -916,18 +916,7 @@ int LGBM_DatasetConcatenate(const char** filenames,
   }
   Config config;
   DatasetLoader loader(config, nullptr, 1, nullptr);
-  Dataset* ret = loader.LoadFromFile(filenames[0], nullptr);
-  data_size_t total_data = ret->num_data();
-  for(int i = 1; i < n; i++){
-    total_data += loader.LoadNumDataFromBinFile(filenames[i]);
-  }
-  ret->reserve(total_data);
-  for(int i = 1; i < n; i++){
-    Dataset* next = loader.LoadFromFile(filenames[i], nullptr);
-    ret->addDataFrom(next);
-    delete next;
-  }
-  *out = ret;
+  *out = loader.LoadFromBinFiles(filenames, n);
   API_END();
 }
 // ---- start of booster

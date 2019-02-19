@@ -23,12 +23,12 @@ class DatasetLoader {
     int** sample_indices, int num_col, const int* num_per_col,
     size_t total_sample_size, data_size_t num_data);
 
+  LIGHTGBM_EXPORT Dataset* LoadFromBinFiles(const char** filenames, int n);
+
   /*! \brief Disable copy */
   DatasetLoader& operator=(const DatasetLoader&) = delete;
   /*! \brief Disable copy */
   DatasetLoader(const DatasetLoader&) = delete;
-
-  data_size_t LoadNumDataFromBinFile(const char* data_filename);
 
  private:
   Dataset* LoadFromBinFile(const char* data_filename, const char* bin_filename, int rank, int num_machines, int* num_global_data, std::vector<data_size_t>* used_data_indices);
@@ -53,6 +53,9 @@ class DatasetLoader {
 
   /*! \brief Check can load from binary file */
   std::string CheckCanLoadFromBin(const char* filename);
+
+  /*! \brief Read the number of data points from the binary file given, or return -1 on error. */
+  data_size_t LoadNumDataFromBinFile(const char* data_filename);
 
   const Config& config_;
   /*! \brief Random generator*/

@@ -1150,9 +1150,39 @@ data_size_t DatasetLoader::LoadNumDataFromBinFile(const char* bin_filename){
   size_t size_of_token = std::strlen(Dataset::binary_file_token);
   size_t buffer_size = size_of_token + sizeof(size_t) + sizeof(data_size_t);
   auto buffer = std::vector<char>(buffer_size);
-  reader->Read(buffer.data(), buffer_size);
+  size_t read_cnt = reader->Read(buffer.data(), buffer_size);
+  if(read_cnt < buffer_size || std::string(buffer.data(), size_of_token) != std::string(Dataset::binary_file_token)){
+    return -1;
+  }
   auto mem_ptr = buffer.data()+size_of_token+sizeof(size_t);
   return *(reinterpret_cast<data_size_t*>(mem_ptr));
 }
 
+Dataset* DatasetLoader::LoadFromBinFiles(const char** filenames, int n){
+  if(n < 1){
+    throw std::runtime_error("DatasetConcatenate requires at least 1 dataset to concatenate.");
+  }
+  std::string check = CheckCanLoadFromBin(filenames[0]);
+  if(check.size() == 0){
+    throw std::runtime_error("Could not load binary file: " + std::string(filenames[0]));
+  }
+  data_size_t num_global_data = 0;
+  std::vector<data_size_t> used_data_indices;  
+  Dataset* ret = LoadFromBinFile(filenames[0], check.c_str(), 0, 1, &num_global_data, &used_data_indices);
+  data_size_t total_data = ret->num_data();
+  for(int i = 1; i < n; i++){
+    data_size_t num_data = LoadNumDataFromBinFile(filenames[i]);
+    if(num_data < 0){
+      throw std::runtime_error("Could not load binary file: " + std::string(filenames[i]));
+    }
+    total_data += num_data;
+  }
+  ret->reserve(total_data);
+  for(int i = 1; i < n; i++){
+    Dataset* next = LoadFromBinFile(filenames[i], filenames[i],  0, 1, &num_global_data, &used_data_indices);
+    ret->addDataFrom(next);
+    delete next;
+  }
+  return ret;
+}
 }  // namespace LightGBM
