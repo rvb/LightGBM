@@ -273,40 +273,41 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
 
   // buffer to read binary file
   size_t buffer_size = 16 * 1024 * 1024;
-  auto buffer = std::vector<char>(buffer_size);
+  auto buffer = (char*)malloc(sizeof(char)*buffer_size);
 
   // check token
   size_t size_of_token = std::strlen(Dataset::binary_file_token);
-  size_t read_cnt = reader->Read(buffer.data(), sizeof(char) * size_of_token);
+  size_t read_cnt = reader->Read(buffer, sizeof(char) * size_of_token);
   if (read_cnt != sizeof(char) * size_of_token) {
     Log::Fatal("Binary file error: token has the wrong size");
   }
-  if (std::string(buffer.data()) != std::string(Dataset::binary_file_token)) {
+  if (std::string(buffer, size_of_token) != std::string(Dataset::binary_file_token)) {
     Log::Fatal("Input file is not LightGBM binary file");
   }
 
   // read size of header
-  read_cnt = reader->Read(buffer.data(), sizeof(size_t));
+  read_cnt = reader->Read(buffer, sizeof(size_t));
 
   if (read_cnt != sizeof(size_t)) {
     Log::Fatal("Binary file error: header has the wrong size");
   }
 
-  size_t size_of_head = *(reinterpret_cast<size_t*>(buffer.data()));
+  size_t size_of_head = *(reinterpret_cast<size_t*>(buffer));
 
   // re-allocmate space if not enough
   if (size_of_head > buffer_size) {
     buffer_size = size_of_head;
-    buffer.resize(buffer_size);
+    free(buffer);
+    buffer = (char*)malloc(buffer_size);
   }
   // read header
-  read_cnt = reader->Read(buffer.data(), size_of_head);
+  read_cnt = reader->Read(buffer, size_of_head);
 
   if (read_cnt != size_of_head) {
     Log::Fatal("Binary file error: header is incorrect");
   }
   // get header
-  const char* mem_ptr = buffer.data();
+  const char* mem_ptr = buffer;
   dataset->num_data_ = *(reinterpret_cast<const data_size_t*>(mem_ptr));
   mem_ptr += sizeof(dataset->num_data_);
   dataset->num_features_ = *(reinterpret_cast<const int*>(mem_ptr));
@@ -433,37 +434,34 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
   for (int i = 0; i < dataset->num_total_features_; ++i) {
     int str_len = *(reinterpret_cast<const int*>(mem_ptr));
     mem_ptr += sizeof(int);
-    std::stringstream str_buf;
-    for (int j = 0; j < str_len; ++j) {
-      char tmp_char = *(reinterpret_cast<const char*>(mem_ptr));
-      mem_ptr += sizeof(char);
-      str_buf << tmp_char;
-    }
-    dataset->feature_names_.emplace_back(str_buf.str());
+    std::string name(reinterpret_cast<const char*>(mem_ptr), str_len);
+    dataset->feature_names_.push_back(name);
+    mem_ptr += sizeof(char)*str_len;
   }
 
   // read size of meta data
-  read_cnt = reader->Read(buffer.data(), sizeof(size_t));
+  read_cnt = reader->Read(buffer, sizeof(size_t));
 
   if (read_cnt != sizeof(size_t)) {
     Log::Fatal("Binary file error: meta data has the wrong size");
   }
 
-  size_t size_of_metadata = *(reinterpret_cast<size_t*>(buffer.data()));
+  size_t size_of_metadata = *(reinterpret_cast<size_t*>(buffer));
 
   // re-allocate space if not enough
   if (size_of_metadata > buffer_size) {
     buffer_size = size_of_metadata;
-    buffer.resize(buffer_size);
+    free(buffer);
+    buffer = (char*)malloc(buffer_size);
   }
   //  read meta data
-  read_cnt = reader->Read(buffer.data(), size_of_metadata);
+  read_cnt = reader->Read(buffer, size_of_metadata);
 
   if (read_cnt != size_of_metadata) {
     Log::Fatal("Binary file error: meta data is incorrect");
   }
   // load meta data
-  dataset->metadata_.LoadFromMemory(buffer.data());
+  dataset->metadata_.LoadFromMemory(buffer);
 
   *num_global_data = dataset->num_data_;
   used_data_indices->clear();
@@ -506,24 +504,25 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
   // read feature data
   for (int i = 0; i < dataset->num_groups_; ++i) {
     // read feature size
-    read_cnt = reader->Read(buffer.data(), sizeof(size_t));
+    read_cnt = reader->Read(buffer, sizeof(size_t));
     if (read_cnt != sizeof(size_t)) {
       Log::Fatal("Binary file error: feature %d has the wrong size", i);
     }
-    size_t size_of_feature = *(reinterpret_cast<size_t*>(buffer.data()));
+    size_t size_of_feature = *(reinterpret_cast<size_t*>(buffer));
     // re-allocate space if not enough
     if (size_of_feature > buffer_size) {
       buffer_size = size_of_feature;
-      buffer.resize(buffer_size);
+      free(buffer);
+      buffer = (char*)malloc(buffer_size);
     }
 
-    read_cnt = reader->Read(buffer.data(), size_of_feature);
+    read_cnt = reader->Read(buffer, size_of_feature);
 
     if (read_cnt != size_of_feature) {
       Log::Fatal("Binary file error: feature %d is incorrect, read count: %d", i, read_cnt);
     }
     dataset->feature_groups_.emplace_back(std::unique_ptr<FeatureGroup>(
-      new FeatureGroup(buffer.data(),
+      new FeatureGroup(buffer,
                        *num_global_data,
                        *used_data_indices)));
   }
