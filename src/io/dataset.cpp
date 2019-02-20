@@ -1027,6 +1027,7 @@ void Dataset::addDataFrom(Dataset* other){
 }
 
 void Dataset::reserve(data_size_t num_data){
+  metadata_.reserve(num_data);
   for(auto& fg: feature_groups_){
     fg->reserve(num_data);
   }

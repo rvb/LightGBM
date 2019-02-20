@@ -201,6 +201,7 @@ class Metadata {
   */
   inline int64_t num_init_score() const { return num_init_score_; }
 
+  void reserve(data_size_t num_data);
   void Merge(const Metadata& other);
 
   /*! \brief Disable copy */
