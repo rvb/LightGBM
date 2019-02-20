@@ -5,6 +5,7 @@
 #include <LightGBM/utils/array_args.h>
 
 #include <LightGBM/network.h>
+#include <cstdlib>
 
 
 namespace LightGBM {
@@ -273,7 +274,7 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
 
   // buffer to read binary file
   size_t buffer_size = 16 * 1024 * 1024;
-  auto buffer = (char*)malloc(sizeof(char)*buffer_size);
+  auto buffer = (char*)std::malloc(sizeof(char)*buffer_size);
 
   // check token
   size_t size_of_token = std::strlen(Dataset::binary_file_token);
@@ -297,8 +298,8 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
   // re-allocmate space if not enough
   if (size_of_head > buffer_size) {
     buffer_size = size_of_head;
-    free(buffer);
-    buffer = (char*)malloc(buffer_size);
+    std::free(buffer);
+    buffer = (char*)std::malloc(buffer_size);
   }
   // read header
   read_cnt = reader->Read(buffer, size_of_head);
@@ -451,8 +452,8 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
   // re-allocate space if not enough
   if (size_of_metadata > buffer_size) {
     buffer_size = size_of_metadata;
-    free(buffer);
-    buffer = (char*)malloc(buffer_size);
+    std::free(buffer);
+    buffer = (char*)std::malloc(buffer_size);
   }
   //  read meta data
   read_cnt = reader->Read(buffer, size_of_metadata);
@@ -512,8 +513,8 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
     // re-allocate space if not enough
     if (size_of_feature > buffer_size) {
       buffer_size = size_of_feature;
-      free(buffer);
-      buffer = (char*)malloc(buffer_size);
+      std::free(buffer);
+      buffer = (char*)std::malloc(buffer_size);
     }
 
     read_cnt = reader->Read(buffer, size_of_feature);
@@ -528,6 +529,7 @@ Dataset* DatasetLoader::LoadFromBinFile(const char* data_filename, const char* b
   }
   dataset->feature_groups_.shrink_to_fit();
   dataset->is_finish_load_ = true;
+  std::free(buffer);
   return dataset.release();
 }
 
