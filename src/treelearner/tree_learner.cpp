@@ -1,5 +1,6 @@
 #include <LightGBM/tree_learner.h>
 
+#include "decision_table_learner.h"
 #include "serial_tree_learner.h"
 #include "gpu_tree_learner.h"
 #include "parallel_tree_learner.h"
@@ -16,6 +17,8 @@ TreeLearner* TreeLearner::CreateTreeLearner(const std::string& learner_type, con
       return new DataParallelTreeLearner<SerialTreeLearner>(config);
     } else if (learner_type == std::string("voting")) {
       return new VotingParallelTreeLearner<SerialTreeLearner>(config);
+    } else if (learner_type == std::string("table")){
+      return new DecisionTableLearner(config);
     }
   }
   else if (device_type == std::string("gpu")) {
