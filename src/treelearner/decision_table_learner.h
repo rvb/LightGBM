@@ -69,6 +69,7 @@ class DecisionTableLearner: public TreeLearner {
   FeatureSplits FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx);
   FeatureSplits FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx);
   void FindBestThresholdSequence(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx, FeatureSplits& output, const int dir, const bool skip_default_bin, const bool use_na_as_missing);
+  void Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians);
 
   const Dataset* train_data_;
   HistogramPool histogram_pool_;

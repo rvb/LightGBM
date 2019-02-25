@@ -14,7 +14,7 @@ namespace LightGBM {
 
 DecisionTableLearner::DecisionTableLearner(const Config* config){
   //TODO: Make this a config parameter
-  tree_depth_ = 2;
+  tree_depth_ = 5;
   config_ = config;
 }
 
@@ -265,7 +265,6 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
       }
     }
   }
-  std::cout << "DEBUG " << feature_idx << " best gain " << best_gain << std::endl;
   if (is_splittable && best_gain > output.gain) {
     for(int i = 0; i < num_leaves; ++i){
       // update split information
@@ -362,6 +361,36 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   return ret;
 }
 
+void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians){
+  const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
+  bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
+  if(is_numerical_split){
+    for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
+      std::cout << "DEBUG: Splitting leaf " << left_leaf << " left count : " << split.leaf_splits[left_leaf].left_count << " , right count : " << split.leaf_splits[left_leaf].right_count << std::endl;
+      auto threshold_double = train_data_->RealThreshold(inner_feature_index, split.leaf_splits[left_leaf].threshold);
+      // split tree, will return right leaf
+      auto right_leaf = tree->Split(left_leaf,
+				    inner_feature_index,
+				    split.leaf_splits[left_leaf].feature,
+				    split.leaf_splits[left_leaf].threshold,
+				    threshold_double,
+				    static_cast<double>(split.leaf_splits[left_leaf].left_output),
+				    static_cast<double>(split.leaf_splits[left_leaf].right_output),
+				    static_cast<data_size_t>(split.leaf_splits[left_leaf].left_count),
+				    static_cast<data_size_t>(split.leaf_splits[left_leaf].right_count),
+				    static_cast<float>(split.leaf_splits[left_leaf].gain),
+				    train_data_->FeatureBinMapper(inner_feature_index)->missing_type(),
+				    split.leaf_splits[left_leaf].default_left);
+      data_partition_->Split(left_leaf, train_data_, inner_feature_index,
+			     &split.leaf_splits[left_leaf].threshold, 1, split.leaf_splits[left_leaf].default_left, right_leaf);
+      leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
+      leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
+    }
+  } else {
+    throw std::runtime_error("Decision table learner does not support categorical splits yet.");
+  }
+}
+
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
@@ -373,6 +402,11 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   for(int i = 0; i < tree_depth_ - 1; ++i){
     ConstructHistograms(is_feature_used, 1 << i, gradients, hessians);
     auto split = FindBestSplit(is_feature_used, 1 << i, gradients, hessians);
+    if(split.gain <= 0.0){
+      Log::Warning("No further splits with positive gain, best gain: %f", split.gain);
+      break;
+    }
+    Split(tree.get(), split, gradients, hessians);
     std::cout << "DEBUG: Iter " << i << " split gain " << split.gain << " feature " << split.leaf_splits[0].feature << " threshold " << split.leaf_splits[0].threshold << std::endl;
   }
   return tree.release();
