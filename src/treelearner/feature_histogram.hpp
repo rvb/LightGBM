@@ -449,7 +449,6 @@ class FeatureHistogram {
     }
   }
 
- private:
   static double GetSplitGains(double sum_left_gradients, double sum_left_hessians,
                               double sum_right_gradients, double sum_right_hessians,
                               double l1, double l2, double max_delta_step,
@@ -462,6 +461,17 @@ class FeatureHistogram {
     }
     return GetLeafSplitGainGivenOutput(sum_left_gradients, sum_left_hessians, l1, l2, left_output)
       + GetLeafSplitGainGivenOutput(sum_right_gradients, sum_right_hessians, l1, l2, right_output);
+  }
+
+  /*!
+  * \brief Calculate the split gain based on regularized sum_gradients and sum_hessians
+  * \param sum_gradients
+  * \param sum_hessians
+  * \return split gain
+  */
+  static double GetLeafSplitGain(double sum_gradients, double sum_hessians, double l1, double l2, double max_delta_step) {
+    double output = CalculateSplittedLeafOutput(sum_gradients, sum_hessians, l1, l2, max_delta_step);
+    return GetLeafSplitGainGivenOutput(sum_gradients, sum_hessians, l1, l2, output);
   }
 
   /*!
@@ -481,17 +491,7 @@ class FeatureHistogram {
     return ret;
   }
 
-  /*!
-  * \brief Calculate the split gain based on regularized sum_gradients and sum_hessians
-  * \param sum_gradients
-  * \param sum_hessians
-  * \return split gain
-  */
-  static double GetLeafSplitGain(double sum_gradients, double sum_hessians, double l1, double l2, double max_delta_step) {
-    double output = CalculateSplittedLeafOutput(sum_gradients, sum_hessians, l1, l2, max_delta_step);
-    return GetLeafSplitGainGivenOutput(sum_gradients, sum_hessians, l1, l2, output);
-  }
-
+ private:
   static double GetLeafSplitGainGivenOutput(double sum_gradients, double sum_hessians, double l1, double l2, double output) {
     const double sg_l1 = ThresholdL1(sum_gradients, l1);
     return -(2.0 * sg_l1 * output + (sum_hessians + l2) * output * output);
