@@ -25,6 +25,7 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   train_data_ = train_data;
   num_data_ = train_data_->num_data();
   auto num_leaves = 1 << tree_depth_;
+  data_partition_.reset(new DataPartition(num_data_, num_leaves));  
   //TODO: Do we bother with the cache-size config?
   histogram_pool_.DynamicChangeSize(train_data_, config_, num_leaves, num_leaves);
   leaf_splits_.reset(new LeafSplits(num_data_));
@@ -44,6 +45,8 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   ordered_gradients_.resize(num_data_);
   ordered_hessians_.resize(num_data_);
   //TODO: ordered_bin_indices copy-pasta.
+
+  is_constant_hessian_ = is_constant_hessian;
 }
 
 void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
@@ -59,22 +62,24 @@ void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_fea
     FeatureHistogram* histogram_array;
     auto whatIsThisAnyway = histogram_pool_.Get(i,&histogram_array);
     HistogramBinEntry* ptr_leaf_hist_data = histogram_array[0].RawData() - 1;
-
-    //TODO: Get enough shit copied in here to make this compile.
-    // train_data_->ConstructHistograms(is_feature_used,
-    // 				     smaller_leaf_splits_->data_indices(), smaller_leaf_splits_->num_data_in_leaf(),
-    // 				     smaller_leaf_splits_->LeafIndex(),
-    // 				     ordered_bins_, gradients_, hessians_,
-    // 				     ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
-    // 				     ptr_smaller_leaf_hist_data);    
+    leaf_splits_->Init(i, data_partition_.get(), gradients, hessians);
+    train_data_->ConstructHistograms(is_feature_used,
+    				     leaf_splits_->data_indices(), leaf_splits_->num_data_in_leaf(),
+    				     leaf_splits_->LeafIndex(),
+    				     ordered_bins_, gradients, hessians,
+    				     ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
+    				     ptr_leaf_hist_data);    
   }
 }
 
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
-  leaf_splits_->Init(gradients, hessians);  
+  leaf_splits_->Init(gradients, hessians);
+  //TODO: Feature bagging etc.
+  std::vector<int8_t> is_feature_used(train_data_->num_total_features(), true);
   for(int i = 0; i < tree_depth_ - 1; ++i){
+    ConstructHistograms(is_feature_used, 1 << i, gradients, hessians);
     std::cout << "DEBUG SHOULD DO ITER " << i << std::endl;
   }
   return tree.release();

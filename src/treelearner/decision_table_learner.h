@@ -80,7 +80,9 @@ class DecisionTableLearner: public TreeLearner {
   /*! \brief gradients of current iteration, ordered for cache optimized */
   std::vector<score_t> ordered_gradients_;
   /*! \brief hessians of current iteration, ordered for cache optimized */
-  std::vector<score_t> ordered_hessians_;  
+  std::vector<score_t> ordered_hessians_;
+
+  bool is_constant_hessian_;
 };
 }  // namespace LightGBM
 #endif   // LightGBM_TREELEARNER_DECISION_TABLE_LEARNER_H_
