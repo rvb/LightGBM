@@ -144,6 +144,8 @@ void GetTreeLearnerType(const std::unordered_map<std::string, std::string>& para
       *tree_learner = "data";
     } else if (value == std::string("voting") || value == std::string("voting_parallel")) {
       *tree_learner = "voting";
+    } else if (value == std::string("table")){
+      *tree_learner = "table";
     } else {
       Log::Fatal("Unknown tree learner type %s", value.c_str());
     }
@@ -227,20 +229,27 @@ void Config::CheckParamConflict() {
     }
   }
 
-  if (num_machines > 1) {
-    is_parallel = true;
+  bool is_single_tree_learner;
+  if(tree_learner != std::string("table")){
+    if (num_machines > 1) {
+      is_parallel = true;
+    } else {
+      is_parallel = false;
+      if(tree_learner != std::string("serial")){
+	tree_learner = "serial";
+      }
+    }
+
+    is_single_tree_learner = tree_learner == std::string("serial");
+
+    if (is_single_tree_learner) {
+      is_parallel = false;
+      num_machines = 1;
+    }
   } else {
     is_parallel = false;
-    if(tree_learner != std::string("serial")){
-      tree_learner = "serial";
-    }
-  }
-
-  bool is_single_tree_learner = tree_learner == std::string("serial");
-
-  if (is_single_tree_learner) {
-    is_parallel = false;
     num_machines = 1;
+    is_single_tree_learner = true;
   }
 
   if (is_single_tree_learner || tree_learner == std::string("feature")) {
