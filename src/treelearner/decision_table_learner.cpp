@@ -128,11 +128,13 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	}
 	left_count[i] = leaf_splits_[i]->num_data_in_leaf() - right_count[i];
 	if(left_count[i] < config_->min_data_in_leaf){
+	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient data on left." << std::endl;
 	  should_break = true;
 	  break;
 	}
 	sum_left_hessian[i] = leaf_splits_[i]->sum_hessians() - sum_right_hessian[i];
 	if(sum_left_hessian[i] < config_->min_sum_hessian_in_leaf){
+	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient hessian on left." << std::endl;	  
 	  should_break = true;
 	  break;
 	}
@@ -219,6 +221,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	right_count[i] = leaf_splits_[i]->num_data_in_leaf() - left_count[i];
 	// if data not enough
 	if (right_count[i] < config_->min_data_in_leaf){
+	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient data on right." << std::endl;	  	  
 	  should_break = true;
 	  break;
 	}
@@ -226,6 +229,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	sum_right_hessian[i] = leaf_splits_[i]->sum_hessians() - sum_left_hessian[i];
 	// if sum hessian too small
 	if (sum_right_hessian[i] < config_->min_sum_hessian_in_leaf){
+	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient hessian on right." << std::endl;	  	  	  
 	  should_break = true;
 	  break;
 	}
