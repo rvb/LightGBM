@@ -54,6 +54,7 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   //TODO: ordered_bin_indices copy-pasta.
 
   is_constant_hessian_ = is_constant_hessian;
+  feature_used_.resize(train_data_->num_features(), false);  
 }
 
 void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
@@ -323,7 +324,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
       output.leaf_splits[i].right_count = leaf_splits_[i]->num_data_in_leaf() - best_left_count[i];
       output.leaf_splits[i].right_sum_gradient = leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i];
       output.leaf_splits[i].right_sum_hessian = leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i] - kEpsilon;
-      output.leaf_splits[i].gain = gain_per_node[i];
+      output.leaf_splits[i].gain = best_gain_per_node[i];
       output.leaf_splits[i].default_left = dir == -1;
     }
     output.gain = best_gain;
@@ -351,8 +352,8 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
       }
     }    
   }
-  output.gain -= min_gain_shift;
   int real_fidx = train_data_->RealFeatureIndex(feature_idx);
+  output.gain -= min_gain_shift;
   for(int i = 0; i < num_leaves; ++i){
     output.leaf_splits[i].feature = real_fidx;
     output.leaf_splits[i].gain -= gain_shifts[i];
@@ -376,9 +377,14 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   }
   std::vector<double> gain_shifts(num_leaves, kMinScore);
   for(int feature_idx = 0; feature_idx < train_data_->num_features(); ++feature_idx){
+    int real_feature_idx = train_data_->RealFeatureIndex(feature_idx);
     if(is_feature_used[feature_idx]){
       double min_shift_gain = 0.0;
-      
+      double additional_cost_per_node = config_->cegb_penalty_split;
+      if(!feature_used_[feature_idx] && !config_->cegb_penalty_feature_coupled.empty()){
+	additional_cost_per_node = config_->cegb_penalty_feature_coupled[feature_idx]/num_leaves;
+      }
+      additional_cost_per_node *= config_->cegb_tradeoff;
       for(int leaf_idx = 0; leaf_idx < num_leaves; ++leaf_idx){
 	//Step 0: Fix histogram (TODO: This is a copy-pasta from the tree learner)
 	//TODO: I vaguely recall this being related to feature bundling, is that the case???
@@ -393,7 +399,11 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
 								 config_->lambda_l1,
 								 config_->lambda_l2,
 								 config_->max_delta_step);
-	gain_shifts[leaf_idx] += config_->min_gain_to_split;
+	gain_shifts[leaf_idx] += config_->min_gain_to_split + additional_cost_per_node;
+	if(!feature_used_[feature_idx] && !config_->cegb_penalty_feature_lazy.empty()){
+	  gain_shifts[leaf_idx] +=
+	    config_->cegb_tradeoff*config_->cegb_penalty_feature_lazy[feature_idx]*leaf_splits_[leaf_idx]->num_data_in_leaf();
+	}
 	min_shift_gain += gain_shifts[leaf_idx];
       }
       //Find best split for this feature.
@@ -408,6 +418,7 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
 
 void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians){
   const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
+  feature_used_[inner_feature_index] = true;
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
   if(is_numerical_split){
     for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){

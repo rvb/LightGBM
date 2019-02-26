@@ -89,6 +89,8 @@ class DecisionTableLearner: public TreeLearner {
   std::vector<score_t> ordered_hessians_;
 
   bool is_constant_hessian_;
+
+  std::vector<bool> feature_used_;
 };
 }  // namespace LightGBM
 #endif   // LightGBM_TREELEARNER_DECISION_TABLE_LEARNER_H_
