@@ -129,8 +129,11 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
   std::vector<double> best_sum_left_gradient(num_leaves, NAN);
   std::vector<double> best_sum_left_hessian(num_leaves, NAN);
   double best_gain = kMinScore;
+  std::vector<double> best_gain_per_node(num_leaves, kMinScore);
+  std::vector<double> gain_per_node(num_leaves, kMinScore);    
   std::vector<data_size_t> best_left_count(num_leaves,0);
   uint32_t best_threshold = static_cast<uint32_t>(num_bin);
+
 
   if (dir == -1) {
     std::vector<double> sum_right_gradient(num_leaves, 0.0f);
@@ -183,10 +186,10 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
       double current_gain = 0.0;
       for(int i = 0; i < num_leaves; ++i){
 	sum_left_gradient[i] = leaf_splits_[i]->sum_gradients() - sum_right_gradient[i];
-	double this_leaf = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient[i], sum_right_hessian[i],
+	gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient[i], sum_right_hessian[i],
 							   config_->lambda_l1, config_->lambda_l2, config_->max_delta_step,
 							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), train_data_->FeatureMonotone(feature_idx));
-	current_gain += this_leaf;
+	current_gain += gain_per_node[i];
       }
       // gain with split is worse than without split
       if (current_gain <= min_gain_shift) continue;
@@ -200,6 +203,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	  best_left_count[i] = left_count[i];
 	  best_sum_left_gradient[i] = sum_left_gradient[i];
 	  best_sum_left_hessian[i] = sum_left_hessian[i];
+	  best_gain_per_node[i] = gain_per_node[i];
 	}
 	// left is <= threshold, right is > threshold.  so this is t-1
 	best_threshold = static_cast<uint32_t>(t - 1 + bias);
@@ -278,10 +282,10 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
       for(int i = 0; i < num_leaves; ++i){
 	sum_right_gradient[i] = leaf_splits_[i]->sum_gradients() - sum_left_gradient[i];
         // current split gain
-        double this_leaf = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient[i], sum_right_hessian[i],
+        gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient[i], sum_right_hessian[i],
 							   config_->lambda_l1, config_->lambda_l2, config_->max_delta_step,
 							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), train_data_->FeatureMonotone(feature_idx));
-	current_gain += this_leaf;
+	current_gain += gain_per_node[i];
       }
 
       // gain with split is worse than without split
@@ -295,6 +299,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	  best_left_count[i] = left_count[i];
 	  best_sum_left_gradient[i] = sum_left_gradient[i];
 	  best_sum_left_hessian[i] = sum_left_hessian[i];
+	  best_gain_per_node[i] = gain_per_node[i];
 	}
 	best_threshold = static_cast<uint32_t>(t + bias);
 	best_gain = current_gain;
@@ -318,14 +323,14 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
       output.leaf_splits[i].right_count = leaf_splits_[i]->num_data_in_leaf() - best_left_count[i];
       output.leaf_splits[i].right_sum_gradient = leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i];
       output.leaf_splits[i].right_sum_hessian = leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i] - kEpsilon;
-      output.leaf_splits[i].gain = 0.0; //TODO: Fill in.
+      output.leaf_splits[i].gain = gain_per_node[i];
       output.leaf_splits[i].default_left = dir == -1;
     }
     output.gain = best_gain;
   }
 }
 
-FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   auto num_bin = train_data_->FeatureNumBin(feature_idx);
   auto missing_type = train_data_->FeatureBinMapper(feature_idx)->missing_type();
   FeatureSplits output(num_leaves);
@@ -350,13 +355,14 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
   int real_fidx = train_data_->RealFeatureIndex(feature_idx);
   for(int i = 0; i < num_leaves; ++i){
     output.leaf_splits[i].feature = real_fidx;
+    output.leaf_splits[i].gain -= gain_shifts[i];
   }
   return output;
 }
 
-FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   if(train_data_->FeatureBinMapper(feature_idx)->bin_type() == BinType::NumericalBin){
-    return FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, histogram_arrs, feature_idx);
+    return FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
   } else {
     throw std::runtime_error("Decision table learner does not currently support categorical features.");
   }
@@ -367,10 +373,12 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   std::vector<FeatureHistogram*> histogram_arrs(num_leaves);
   for(int leaf_idx = 0; leaf_idx < num_leaves; ++leaf_idx){
     histogram_pool_.Get(leaf_idx, &histogram_arrs[leaf_idx]);
-  }  
+  }
+  std::vector<double> gain_shifts(num_leaves, kMinScore);
   for(int feature_idx = 0; feature_idx < train_data_->num_features(); ++feature_idx){
     if(is_feature_used[feature_idx]){
-      double min_shift_gain = config_->min_gain_to_split * num_leaves;
+      double min_shift_gain = 0.0;
+      
       for(int leaf_idx = 0; leaf_idx < num_leaves; ++leaf_idx){
 	//Step 0: Fix histogram (TODO: This is a copy-pasta from the tree learner)
 	//TODO: I vaguely recall this being related to feature bundling, is that the case???
@@ -379,16 +387,17 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
 				  leaf_splits_[leaf_idx]->num_data_in_leaf(),
 				  histogram_arrs[leaf_idx][feature_idx].RawData());
 	//Step 1: Compute minimum gain to overcome.
-	double shift_gain =
+	gain_shifts[leaf_idx] =
 	  histogram_arrs[leaf_idx][feature_idx].GetLeafSplitGain(leaf_splits_[leaf_idx]->sum_gradients(),
 								 leaf_splits_[leaf_idx]->sum_hessians(),
 								 config_->lambda_l1,
 								 config_->lambda_l2,
 								 config_->max_delta_step);
-	min_shift_gain += shift_gain;
+	gain_shifts[leaf_idx] += config_->min_gain_to_split;
+	min_shift_gain += gain_shifts[leaf_idx];
       }
       //Find best split for this feature.
-      auto split = FindBestFeatureSplit(num_leaves, min_shift_gain, histogram_arrs, feature_idx);
+      auto split = FindBestFeatureSplit(num_leaves, min_shift_gain, gain_shifts, histogram_arrs, feature_idx);
       if(split.gain > ret.gain){
 	ret = split;
       }
