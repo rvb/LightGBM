@@ -13,9 +13,14 @@
 namespace LightGBM {
 
 DecisionTableLearner::DecisionTableLearner(const Config* config){
-  //TODO: Make this a config parameter
-  tree_depth_ = 5;
   config_ = config;
+  if(config_->max_depth > 0){
+    tree_depth_ = config_->max_depth;
+  } else {
+    Log::Warning("Max depth is not set, defaulting to 5.");
+    tree_depth_ = 5;
+  }
+
 }
 
 DecisionTableLearner::~DecisionTableLearner() {
