@@ -57,7 +57,22 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
 }
 
 void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
-  throw std::runtime_error("Resetting training data is not implemented yet for decision tables.");
+  train_data_ = train_data;
+  num_data_ = train_data_->num_data();
+  
+  // get ordered bin
+  train_data_->CreateOrderedBins(&ordered_bins_);
+
+  for(int i = 0; i < (1 << tree_depth_); ++i){
+    leaf_splits_[i]->ResetNumData(num_data_);
+  }
+
+  data_partition_->ResetNumData(num_data_);
+  
+  ordered_gradients_.resize(num_data_);
+  ordered_hessians_.resize(num_data_);  
+
+  //TODO: ordered bin indices copy pasta.
 }
 
 void DecisionTableLearner::ResetConfig(const Config* config) {
@@ -441,10 +456,55 @@ Tree* DecisionTableLearner::FitByExistingTree(const Tree* old_tree, const std::v
 
 void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* obj, const double* prediction,
                                         data_size_t total_num_data, const data_size_t* bag_indices, data_size_t bag_cnt) const {
+  if (obj != nullptr && obj->IsRenewTreeOutput()) {
+    CHECK(tree->num_leaves() <= data_partition_->num_leaves());
+    const data_size_t* bag_mapper = nullptr;
+    if (total_num_data != num_data_) {
+      CHECK(bag_cnt == num_data_);
+      bag_mapper = bag_indices;
+    }
+    std::vector<int> n_nozeroworker_perleaf(tree->num_leaves(), 1);
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < tree->num_leaves(); ++i) {
+      const double output = static_cast<double>(tree->LeafOutput(i));
+      data_size_t cnt_leaf_data = 0;
+      auto index_mapper = data_partition_->GetIndexOnLeaf(i, &cnt_leaf_data);
+      if (cnt_leaf_data > 0) {
+        // bag_mapper[index_mapper[i]]
+        const double new_output = obj->RenewTreeOutput(output, prediction, index_mapper, bag_mapper, cnt_leaf_data);
+        tree->SetLeafOutput(i, new_output);
+      } else {
+	throw std::runtime_error("All leaves should contain data in decision table learner.");
+      }
+    }
+  }
 }
 
 void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* obj, double prediction,
   data_size_t total_num_data, const data_size_t* bag_indices, data_size_t bag_cnt) const {
+  if (obj != nullptr && obj->IsRenewTreeOutput()) {
+    CHECK(tree->num_leaves() <= data_partition_->num_leaves());
+    const data_size_t* bag_mapper = nullptr;
+    if (total_num_data != num_data_) {
+      CHECK(bag_cnt == num_data_);
+      bag_mapper = bag_indices;
+    }
+    std::vector<int> n_nozeroworker_perleaf(tree->num_leaves(), 1);
+    int num_machines = Network::num_machines();
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < tree->num_leaves(); ++i) {
+      const double output = static_cast<double>(tree->LeafOutput(i));
+      data_size_t cnt_leaf_data = 0;
+      auto index_mapper = data_partition_->GetIndexOnLeaf(i, &cnt_leaf_data);
+      if (cnt_leaf_data > 0) {
+        // bag_mapper[index_mapper[i]]
+        const double new_output = obj->RenewTreeOutput(output, prediction, index_mapper, bag_mapper, cnt_leaf_data);
+        tree->SetLeafOutput(i, new_output);
+      } else {
+	throw std::runtime_error("All leaves should have data in decision table learner");
+      }
+    }
+  }
 }
 
 }  // namespace LightGBM
