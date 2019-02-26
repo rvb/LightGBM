@@ -1,4 +1,4 @@
-#ifndef LIGHTGBM_TREELEARNER_LEAF_SPLITS_HPP_
+ifndef LIGHTGBM_TREELEARNER_LEAF_SPLITS_HPP_
 #define LIGHTGBM_TREELEARNER_LEAF_SPLITS_HPP_
 
 #include <limits>
@@ -89,7 +89,6 @@ class LeafSplits {
       tmp_sum_gradients += gradients[idx];
       tmp_sum_hessians += hessians[idx];
     }
-    std::cout << "DEBUG: INITING SPLIT(" << leaf_index_ << ") " << num_data_in_leaf_ << " sum g " << tmp_sum_gradients << " sum h " << tmp_sum_hessians << std::endl;
     sum_gradients_ = tmp_sum_gradients;
     sum_hessians_ = tmp_sum_hessians;
     min_val_ = -std::numeric_limits<double>::max();

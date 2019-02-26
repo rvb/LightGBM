@@ -20,7 +20,6 @@ DecisionTableLearner::DecisionTableLearner(const Config* config){
     Log::Warning("Max depth is not set, defaulting to 5.");
     tree_depth_ = 5;
   }
-
 }
 
 DecisionTableLearner::~DecisionTableLearner() {
@@ -62,7 +61,24 @@ void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
 }
 
 void DecisionTableLearner::ResetConfig(const Config* config) {
-  throw std::runtime_error("Resetting config is not implemented yet for decision tables.");
+  config_ = config;
+  int new_depth;
+  if(config_->max_depth > 0){
+    new_depth = config_->max_depth;
+  } else {
+    Log::Warning("Max depth is not set, defaulting to 5.");
+    new_depth = 5;
+  }
+  if(new_depth != tree_depth_){
+    auto num_leaves = 1 << new_depth;
+    histogram_pool_.DynamicChangeSize(train_data_, config_, num_leaves, num_leaves);
+    data_partition_->ResetLeaves(num_leaves);
+    leaf_splits_.resize(num_leaves);
+    for(int i = 0; i < num_leaves; ++i){
+      leaf_splits_[i].reset(new LeafSplits(num_data_));
+    }
+    tree_depth_ = new_depth;
+  }
 }
 
 void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
@@ -133,13 +149,11 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	}
 	left_count[i] = leaf_splits_[i]->num_data_in_leaf() - right_count[i];
 	if(left_count[i] < config_->min_data_in_leaf){
-	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient data on left." << std::endl;
 	  should_break = true;
 	  break;
 	}
 	sum_left_hessian[i] = leaf_splits_[i]->sum_hessians() - sum_right_hessian[i];
 	if(sum_left_hessian[i] < config_->min_sum_hessian_in_leaf){
-	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient hessian on left." << std::endl;	  
 	  should_break = true;
 	  break;
 	}
@@ -226,7 +240,6 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	right_count[i] = leaf_splits_[i]->num_data_in_leaf() - left_count[i];
 	// if data not enough
 	if (right_count[i] < config_->min_data_in_leaf){
-	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient data on right." << std::endl;	  	  
 	  should_break = true;
 	  break;
 	}
@@ -234,7 +247,6 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 	sum_right_hessian[i] = leaf_splits_[i]->sum_hessians() - sum_left_hessian[i];
 	// if sum hessian too small
 	if (sum_right_hessian[i] < config_->min_sum_hessian_in_leaf){
-	  std::cout << "DEBUG: leaf " << i << " feature " << feature_idx << " threshold " << t + bias << " insufficient hessian on right." << std::endl;	  	  	  
 	  should_break = true;
 	  break;
 	}
@@ -375,7 +387,6 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
   if(is_numerical_split){
     for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
-      std::cout << "DEBUG: Splitting leaf " << left_leaf << " left count : " << split.leaf_splits[left_leaf].left_count << " , right count : " << split.leaf_splits[left_leaf].right_count << std::endl;
       auto threshold_double = train_data_->RealThreshold(inner_feature_index, split.leaf_splits[left_leaf].threshold);
       // split tree, will return right leaf
       auto right_leaf = tree->Split(left_leaf,
@@ -416,7 +427,6 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
       break;
     }
     Split(tree.get(), split, gradients, hessians);
-    std::cout << "DEBUG: Iter " << i << " split gain " << split.gain << " feature " << split.leaf_splits[0].feature << " threshold " << split.leaf_splits[0].threshold << std::endl;
   }
   return tree.release();
 }
