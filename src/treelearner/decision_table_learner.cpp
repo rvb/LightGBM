@@ -432,11 +432,15 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   //Puts all data in the leaf.
   data_partition_->Init();
   leaf_splits_[0]->Init(0, data_partition_.get(), gradients, hessians);
+  int32_t cur_depth = 0;
+  if (!forced_split_json.is_null()) {
+    ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
+  }
   //TODO: Feature bagging etc.
   std::vector<int8_t> is_feature_used(train_data_->num_features(), true);
-  for(int i = 0; i < tree_depth_ - 1; ++i){
-    ConstructHistograms(is_feature_used, 1 << i, gradients, hessians);
-    auto split = FindBestSplit(is_feature_used, 1 << i, gradients, hessians);
+  for(int i = cur_depth - 1; i < tree_depth_ - 1; ++i){
+    ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
+    auto split = FindBestSplit(is_feature_used, tree->num_leaves(), gradients, hessians);
     if(split.gain <= 0.0){
       Log::Warning("No further splits with positive gain, best gain: %f", split.gain);
       break;
@@ -447,11 +451,35 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
 }
 
 Tree* DecisionTableLearner::FitByExistingTree(const Tree* old_tree, const score_t* gradients, const score_t *hessians) const {
-  return nullptr;
+  auto tree = std::unique_ptr<Tree>(new Tree(*old_tree));
+  CHECK(data_partition_->num_leaves() >= tree->num_leaves());
+  OMP_INIT_EX();
+  #pragma omp parallel for schedule(static)
+  for (int i = 0; i < tree->num_leaves(); ++i) {
+    OMP_LOOP_EX_BEGIN();
+    data_size_t cnt_leaf_data = 0;
+    auto tmp_idx = data_partition_->GetIndexOnLeaf(i, &cnt_leaf_data);
+    double sum_grad = 0.0f;
+    double sum_hess = kEpsilon;
+    for (data_size_t j = 0; j < cnt_leaf_data; ++j) {
+      auto idx = tmp_idx[j];
+      sum_grad += gradients[idx];
+      sum_hess += hessians[idx];
+    }
+    double output = FeatureHistogram::CalculateSplittedLeafOutput(sum_grad, sum_hess,
+                                                                  config_->lambda_l1, config_->lambda_l2, config_->max_delta_step);
+    auto old_leaf_output = tree->LeafOutput(i);
+    auto new_leaf_output = output * tree->shrinkage();
+    tree->SetLeafOutput(i, config_->refit_decay_rate * old_leaf_output + (1.0 - config_->refit_decay_rate) * new_leaf_output);
+    OMP_LOOP_EX_END();
+  }
+  OMP_THROW_EX();
+  return tree.release();
 }
 
 Tree* DecisionTableLearner::FitByExistingTree(const Tree* old_tree, const std::vector<int>& leaf_pred, const score_t* gradients, const score_t *hessians) {
-  return nullptr;
+  data_partition_->ResetByLeafPred(leaf_pred, old_tree->num_leaves());
+  return FitByExistingTree(old_tree, gradients, hessians);  
 }
 
 void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* obj, const double* prediction,
@@ -506,5 +534,156 @@ void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* 
     }
   }
 }
+
+int32_t DecisionTableLearner::ForceSplits(Tree* tree, Json& forced_split_json, int32_t* cur_depth, const score_t* gradients, const score_t* hessians) {
+  int32_t result_count = 0;
+  // start at root leaf
+  int32_t left_leaf = 0;
+  int32_t right_leaf;
+  std::queue<std::pair<Json, int>> q;
+  Json left = forced_split_json;
+  Json right;
+  bool left_smaller = true;
+  std::unordered_map<int, SplitInfo> forceSplitMap;
+  //TODO: Fix.
+  std::vector<int8_t> is_feature_used(train_data_->num_features(), true);
+  q.push(std::make_pair(forced_split_json, left_leaf));
+  while (!q.empty()) {
+    //Needed to ensure that split computation below is accurate.
+    ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
+    // then, compute own splits
+    SplitInfo left_split;
+    SplitInfo right_split;
+
+    if (!left.is_null()) {
+      const int left_feature = left["feature"].int_value();
+      const double left_threshold_double = left["threshold"].number_value();
+      const int left_inner_feature_index = train_data_->InnerFeatureIndex(left_feature);
+      const uint32_t left_threshold = train_data_->BinThreshold(
+              left_inner_feature_index, left_threshold_double);
+      FeatureHistogram* leaf_histogram_array;
+      histogram_pool_.Get(left_leaf, &leaf_histogram_array);
+      auto& left_leaf_splits = leaf_splits_[left_leaf];
+      leaf_histogram_array[left_inner_feature_index].GatherInfoForThreshold(
+              left_leaf_splits->sum_gradients(),
+              left_leaf_splits->sum_hessians(),
+              left_threshold,
+              left_leaf_splits->num_data_in_leaf(),
+              &left_split);
+      left_split.feature = left_feature;
+      forceSplitMap[left_leaf] = left_split;
+      if (left_split.gain < 0) {
+        forceSplitMap.erase(left_leaf);
+      }
+    }
+
+    if (!right.is_null()) {
+      const int right_feature = right["feature"].int_value();
+      const double right_threshold_double = right["threshold"].number_value();
+      const int right_inner_feature_index = train_data_->InnerFeatureIndex(right_feature);
+      const uint32_t right_threshold = train_data_->BinThreshold(
+              right_inner_feature_index, right_threshold_double);
+      FeatureHistogram* leaf_histogram_array;
+      histogram_pool_.Get(right_leaf, &leaf_histogram_array);
+      auto& right_leaf_splits = leaf_splits_[right_leaf];
+      leaf_histogram_array[right_inner_feature_index].GatherInfoForThreshold(
+        right_leaf_splits->sum_gradients(),
+        right_leaf_splits->sum_hessians(),
+        right_threshold,
+        right_leaf_splits->num_data_in_leaf(),
+        &right_split);
+      right_split.feature = right_feature;
+      forceSplitMap[right_leaf] = right_split;
+      if (right_split.gain < 0) {
+        forceSplitMap.erase(right_leaf);
+      }
+    }
+
+    std::pair<Json, int> pair = q.front();
+    q.pop();
+    int current_leaf = pair.second;
+    // split info should exist because searching in bfs fashion - should have added from parent
+    if (forceSplitMap.find(current_leaf) == forceSplitMap.end()) {
+        break;
+    }
+    SplitInfo current_split_info = forceSplitMap[current_leaf];
+    const int inner_feature_index = train_data_->InnerFeatureIndex(
+            current_split_info.feature);
+    auto threshold_double = train_data_->RealThreshold(
+            inner_feature_index, current_split_info.threshold);
+
+    // split tree, will return right leaf
+    left_leaf = current_leaf;
+    if (train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin) {
+      right_leaf = tree->Split(current_leaf,
+			       inner_feature_index,
+			       current_split_info.feature,
+			       current_split_info.threshold,
+			       threshold_double,
+			       static_cast<double>(current_split_info.left_output),
+			       static_cast<double>(current_split_info.right_output),
+			       static_cast<data_size_t>(current_split_info.left_count),
+			       static_cast<data_size_t>(current_split_info.right_count),
+			       static_cast<float>(current_split_info.gain),
+			       train_data_->FeatureBinMapper(inner_feature_index)->missing_type(),
+			       current_split_info.default_left);
+      data_partition_->Split(current_leaf, train_data_, inner_feature_index,
+                             &current_split_info.threshold, 1,
+                             current_split_info.default_left, right_leaf);
+    } else {
+      std::vector<uint32_t> cat_bitset_inner = Common::ConstructBitset(
+              current_split_info.cat_threshold.data(), current_split_info.num_cat_threshold);
+      std::vector<int> threshold_int(current_split_info.num_cat_threshold);
+      for (int i = 0; i < current_split_info.num_cat_threshold; ++i) {
+        threshold_int[i] = static_cast<int>(train_data_->RealThreshold(
+                    inner_feature_index, current_split_info.cat_threshold[i]));
+      }
+      std::vector<uint32_t> cat_bitset = Common::ConstructBitset(
+              threshold_int.data(), current_split_info.num_cat_threshold);
+      right_leaf = tree->SplitCategorical(current_leaf,
+					  inner_feature_index,
+					  current_split_info.feature,
+					  cat_bitset_inner.data(),
+					  static_cast<int>(cat_bitset_inner.size()),
+					  cat_bitset.data(),
+					  static_cast<int>(cat_bitset.size()),
+					  static_cast<double>(current_split_info.left_output),
+					  static_cast<double>(current_split_info.right_output),
+					  static_cast<data_size_t>(current_split_info.left_count),
+					  static_cast<data_size_t>(current_split_info.right_count),
+					  static_cast<float>(current_split_info.gain),
+					  train_data_->FeatureBinMapper(inner_feature_index)->missing_type());
+      data_partition_->Split(current_leaf, train_data_, inner_feature_index,
+                             cat_bitset_inner.data(), static_cast<int>(cat_bitset_inner.size()),
+                             current_split_info.default_left, right_leaf);
+    }
+
+    leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(),
+				  current_split_info.left_sum_hessian,
+				  current_split_info.right_sum_hessian);
+    leaf_splits_[right_leaf]->Init(left_leaf, data_partition_.get(),
+				  current_split_info.left_sum_hessian,
+				  current_split_info.right_sum_hessian);    
+
+    left = Json();
+    right = Json();
+    if ((pair.first).object_items().count("left") > 0) {
+      left = (pair.first)["left"];
+      if (left.object_items().count("feature") > 0 && left.object_items().count("threshold") > 0) {
+        q.push(std::make_pair(left, left_leaf));
+      }
+    }
+    if ((pair.first).object_items().count("right") > 0) {
+      right = (pair.first)["right"];
+      if (right.object_items().count("feature") > 0 && right.object_items().count("threshold") > 0) {
+        q.push(std::make_pair(right, right_leaf));
+      }
+    }
+    result_count++;
+    *(cur_depth) = std::max(*(cur_depth), tree->leaf_depth(left_leaf));
+  }
+  return result_count;
+}
+
 
 }  // namespace LightGBM
