@@ -71,6 +71,7 @@ class DecisionTableLearner: public TreeLearner {
   void FindBestThresholdSequence(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx, FeatureSplits& output, const int dir, const bool skip_default_bin, const bool use_na_as_missing);
   void Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians);
   int32_t ForceSplits(Tree* tree, Json& forced_split_json, int32_t* cur_depth, const score_t* gradients, const score_t* hessians);
+  void SampleFeatures(std::vector<int8_t>& is_feature_used);
 
   const Dataset* train_data_;
   HistogramPool histogram_pool_;
@@ -87,10 +88,13 @@ class DecisionTableLearner: public TreeLearner {
   std::vector<score_t> ordered_gradients_;
   /*! \brief hessians of current iteration, ordered for cache optimized */
   std::vector<score_t> ordered_hessians_;
+  /*! \brief used for generate used features */
+  Random random_;  
 
   bool is_constant_hessian_;
 
   std::vector<bool> feature_used_;
+  std::vector<int> valid_feature_indices_;
 };
 }  // namespace LightGBM
 #endif   // LightGBM_TREELEARNER_DECISION_TABLE_LEARNER_H_

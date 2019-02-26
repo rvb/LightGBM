@@ -14,6 +14,7 @@ namespace LightGBM {
 
 DecisionTableLearner::DecisionTableLearner(const Config* config){
   config_ = config;
+  random_ = Random(config_->feature_fraction_seed);  
   if(config_->max_depth > 0){
     tree_depth_ = config_->max_depth;
   } else {
@@ -54,7 +55,8 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   //TODO: ordered_bin_indices copy-pasta.
 
   is_constant_hessian_ = is_constant_hessian;
-  feature_used_.resize(train_data_->num_features(), false);  
+  feature_used_.resize(train_data_->num_features(), false);
+  valid_feature_indices_ = train_data_->ValidFeatureIndices();
 }
 
 void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
@@ -446,6 +448,32 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
   }
 }
 
+void DecisionTableLearner::SampleFeatures(std::vector<int8_t>& is_feature_used){
+  int num_features = is_feature_used.size();  
+  if (config_->feature_fraction < 1) {
+    int used_feature_cnt = static_cast<int>(valid_feature_indices_.size()*config_->feature_fraction);
+    // at least use one feature
+    used_feature_cnt = std::max(used_feature_cnt, 1);
+    // initialize used features
+    std::memset(is_feature_used.data(), 0, sizeof(int8_t) * num_features);
+    // Get used feature at current tree
+    auto sampled_indices = random_.Sample(static_cast<int>(valid_feature_indices_.size()), used_feature_cnt);
+    int omp_loop_size = static_cast<int>(sampled_indices.size());
+    #pragma omp parallel for schedule(static, 512) if (omp_loop_size >= 1024)
+    for (int i = 0; i < omp_loop_size; ++i) {
+      int used_feature = valid_feature_indices_[sampled_indices[i]];
+      int inner_feature_index = train_data_->InnerFeatureIndex(used_feature);
+      CHECK(inner_feature_index >= 0);
+      is_feature_used[inner_feature_index] = 1;
+    }
+  } else {
+    #pragma omp parallel for schedule(static, 512) if (num_features >= 1024)
+    for (int i = 0; i < num_features; ++i) {
+      is_feature_used[i] = 1;
+    }
+  }
+}
+
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
@@ -456,8 +484,8 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   if (!forced_split_json.is_null()) {
     ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
   }
-  //TODO: Feature bagging etc.
-  std::vector<int8_t> is_feature_used(train_data_->num_features(), true);
+  std::vector<int8_t> is_feature_used(train_data_->num_features());
+  SampleFeatures(is_feature_used);
   for(int i = cur_depth - 1; i < tree_depth_ - 1; ++i){
     ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
     auto split = FindBestSplit(is_feature_used, tree->num_leaves(), gradients, hessians);
