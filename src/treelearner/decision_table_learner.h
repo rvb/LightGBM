@@ -72,6 +72,7 @@ class DecisionTableLearner: public TreeLearner {
   void Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians);
   int32_t ForceSplits(Tree* tree, Json& forced_split_json, int32_t* cur_depth, const score_t* gradients, const score_t* hessians);
   void SampleFeatures(std::vector<int8_t>& is_feature_used);
+  void InitOrderedBin();
 
   const Dataset* train_data_;
   HistogramPool histogram_pool_;
@@ -83,11 +84,14 @@ class DecisionTableLearner: public TreeLearner {
 
   //Copied pasta.
   std::vector<std::unique_ptr<OrderedBin>> ordered_bins_;
-  bool has_ordered_bin_;
+  bool has_ordered_bin_ = false;
+  std::vector<int> ordered_bin_indices_;
   /*! \brief gradients of current iteration, ordered for cache optimized */
   std::vector<score_t> ordered_gradients_;
   /*! \brief hessians of current iteration, ordered for cache optimized */
   std::vector<score_t> ordered_hessians_;
+  /*! \brief  is_data_in_leaf_[i] != 0 means i-th data is marked */
+  std::vector<char> is_data_in_leaf_;
   /*! \brief used for generate used features */
   Random random_;  
 
