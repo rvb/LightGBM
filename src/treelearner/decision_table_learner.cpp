@@ -437,55 +437,77 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
   const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
   feature_used_[inner_feature_index] = true;
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
-  if(is_numerical_split){
-    for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
+  for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
+    int right_leaf;
+    auto split_info = split.leaf_splits[left_leaf];    
+    if(is_numerical_split){
       auto threshold_double = train_data_->RealThreshold(inner_feature_index, split.leaf_splits[left_leaf].threshold);
       // split tree, will return right leaf
-      auto right_leaf = tree->Split(left_leaf,
-				    inner_feature_index,
-				    split.leaf_splits[left_leaf].feature,
-				    split.leaf_splits[left_leaf].threshold,
-				    threshold_double,
-				    static_cast<double>(split.leaf_splits[left_leaf].left_output),
-				    static_cast<double>(split.leaf_splits[left_leaf].right_output),
-				    static_cast<data_size_t>(split.leaf_splits[left_leaf].left_count),
-				    static_cast<data_size_t>(split.leaf_splits[left_leaf].right_count),
-				    static_cast<float>(split.leaf_splits[left_leaf].gain),
-				    train_data_->FeatureBinMapper(inner_feature_index)->missing_type(),
-				    split.leaf_splits[left_leaf].default_left);
+      right_leaf = tree->Split(left_leaf,
+			       inner_feature_index,
+			       split_info.feature,
+			       split_info.threshold,
+			       threshold_double,
+			       static_cast<double>(split_info.left_output),
+			       static_cast<double>(split_info.right_output),
+			       static_cast<data_size_t>(split_info.left_count),
+			       static_cast<data_size_t>(split_info.right_count),
+			       static_cast<float>(split_info.gain),
+			       train_data_->FeatureBinMapper(inner_feature_index)->missing_type(),
+			       split_info.default_left);
       data_partition_->Split(left_leaf, train_data_, inner_feature_index,
-			     &split.leaf_splits[left_leaf].threshold, 1, split.leaf_splits[left_leaf].default_left, right_leaf);
+			     &split_info.threshold, 1, split_info.default_left, right_leaf);
       leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
       leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
+    } else {
+      std::vector<uint32_t> cat_bitset_inner = Common::ConstructBitset(split_info.cat_threshold.data(), split_info.num_cat_threshold);
+      std::vector<int> threshold_int(split_info.num_cat_threshold);
+      for (int i = 0; i < split_info.num_cat_threshold; ++i) {
+	threshold_int[i] = static_cast<int>(train_data_->RealThreshold(inner_feature_index, split_info.cat_threshold[i]));
+      }
+      std::vector<uint32_t> cat_bitset = Common::ConstructBitset(threshold_int.data(), split_info.num_cat_threshold);
+      right_leaf = tree->SplitCategorical(left_leaf,
+					  inner_feature_index,
+					  split_info.feature,
+					  cat_bitset_inner.data(),
+					  static_cast<int>(cat_bitset_inner.size()),
+					  cat_bitset.data(),
+					  static_cast<int>(cat_bitset.size()),
+					  static_cast<double>(split_info.left_output),
+					  static_cast<double>(split_info.right_output),
+					  static_cast<data_size_t>(split_info.left_count),
+					  static_cast<data_size_t>(split_info.right_count),
+					  static_cast<float>(split_info.gain),
+					  train_data_->FeatureBinMapper(inner_feature_index)->missing_type());
+      data_partition_->Split(left_leaf, train_data_, inner_feature_index,
+			     cat_bitset_inner.data(), static_cast<int>(cat_bitset_inner.size()), split_info.default_left, right_leaf);
+    }
 
-      if (has_ordered_bin_) {
-	// mark data that at left-leaf
-	const data_size_t* indices = data_partition_->indices();
-	const auto left_cnt = data_partition_->leaf_count(left_leaf);
-	char mark = 1;
-	data_size_t begin = data_partition_->leaf_begin(left_leaf);
-	data_size_t end = begin + left_cnt;
+    if (has_ordered_bin_) {
+      // mark data that at left-leaf
+      const data_size_t* indices = data_partition_->indices();
+      const auto left_cnt = data_partition_->leaf_count(left_leaf);
+      char mark = 1;
+      data_size_t begin = data_partition_->leaf_begin(left_leaf);
+      data_size_t end = begin + left_cnt;
 #pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-	for (data_size_t i = begin; i < end; ++i) {
-	  is_data_in_leaf_[indices[i]] = 1;
-	}
-	OMP_INIT_EX();
-	// split the ordered bin
+      for (data_size_t i = begin; i < end; ++i) {
+	is_data_in_leaf_[indices[i]] = 1;
+      }
+      OMP_INIT_EX();
+      // split the ordered bin
 #pragma omp parallel for schedule(static)
-	for (int i = 0; i < static_cast<int>(ordered_bin_indices_.size()); ++i) {
-	  OMP_LOOP_EX_BEGIN();
-	  ordered_bins_[ordered_bin_indices_[i]]->Split(left_leaf, right_leaf, is_data_in_leaf_.data(), mark);
-	  OMP_LOOP_EX_END();
-	}
-	OMP_THROW_EX();
+      for (int i = 0; i < static_cast<int>(ordered_bin_indices_.size()); ++i) {
+	OMP_LOOP_EX_BEGIN();
+	ordered_bins_[ordered_bin_indices_[i]]->Split(left_leaf, right_leaf, is_data_in_leaf_.data(), mark);
+	OMP_LOOP_EX_END();
+      }
+      OMP_THROW_EX();
 #pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-	for (data_size_t i = begin; i < end; ++i) {
-	  is_data_in_leaf_[indices[i]] = 0;
-	}
+      for (data_size_t i = begin; i < end; ++i) {
+	is_data_in_leaf_[indices[i]] = 0;
       }
     }
-  } else {
-    throw std::runtime_error("Decision table learner does not support categorical splits yet.");
   }
 }
 
