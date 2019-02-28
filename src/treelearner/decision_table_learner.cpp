@@ -397,6 +397,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
   std::vector<double> gain_per_node(num_leaves, kMinScore);
   //Per-leaf, because multiple-category splits differ between nodes.
   std::vector<uint32_t> best_threshold(num_leaves, 0);
+  std::vector<std::vector<std::pair<int, double>>> leaf_values;  
   bool is_splittable = false;
   if(use_onehot){
     for (int t = 0; t < used_bin; ++t) {
@@ -455,7 +456,145 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
       }
     }
   } else {
-    throw new std::runtime_error("Decision table learner does not yet support large categorical features");
+    //TODO: Fix L2 penalties.
+    std::vector<int> used_bins;
+    std::vector<int> index_by_leaf(num_leaves,0);
+
+    //Find categorical values that have enough data points to be worth including.
+    for (int i = 0; i < used_bin; ++i) {
+      data_size_t total_cnt = 0;
+      for(int j = 0; j < num_leaves; j++){
+	total_cnt += leaf_histograms[j][i].cnt;
+      }
+      if (total_cnt >= config_->cat_smooth) {
+	used_bins.push_back(i);
+      }
+    }
+    auto ctr_fun = [this](double sum_grad, double sum_hess) {
+		     return (sum_grad) / (sum_hess + config_->cat_smooth);
+    };
+    used_bin = static_cast<int>(used_bins.size());
+
+    //Sort, for each leaf, the per-category output values.
+    leaf_values.resize(num_leaves);
+    for(int i = 0; i < num_leaves; ++i){
+      leaf_values[i].resize(used_bin);
+      for(int j = 0; j < used_bin; ++j){
+	auto& bin = leaf_histograms[i][used_bins[j]];
+	leaf_values[i][j].first = used_bins[j];
+	leaf_values[i][j].second = ctr_fun(bin.sum_gradients, bin.sum_hessians);
+	std::sort(leaf_values[i].begin(), leaf_values[i].end(),
+		  [](std::pair<int,double> i, std::pair<int, double> j) {
+		    return i.second < j.second;
+		  });
+      }
+    }
+
+    //Initialisation step:
+    //Find the current threshold value as the largest of the per-leaf values.
+    //This is the minimum that defines a meaningful split in every leaf.
+    double threshold = leaf_values[0][index_by_leaf[0]].second;
+    for(int i = 1; i < num_leaves; ++i){
+      if(leaf_values[i][index_by_leaf[i]].second > threshold){
+	threshold = leaf_values[i][index_by_leaf[i]].second;
+      }
+    }
+    bool unsplittable = false;
+    //Ensure each leaf index is the last value below threshold.
+    for(int i = 0; i < num_leaves; ++i){
+      //TODO: Implement max_num_cat thing.
+      while(index_by_leaf[i] < used_bin - 1 && index_by_leaf[i+1] < threshold){
+	index_by_leaf[i]++;
+      }
+      //Cannot split this leaf node, as even the smallest feasible threshold is too far out.
+      if(index_by_leaf[i] == used_bin - 1)
+	unsplittable = true;
+    }
+    if(!unsplittable){
+      //Statistics on the left-hand side of the split, by leaf.
+      std::vector<double> sum_left_gradient(num_leaves, 0.0);
+      std::vector<double> sum_left_hessian(num_leaves, 0.0);
+      std::vector<data_size_t> left_count(num_leaves, 0);
+      //Gains for each leaf node.
+      //These are incrementally updated as we move left-to-right through
+      //the thresholds.
+      std::vector<double> gain_per_node(num_leaves, 0.0);
+      double current_gain = 0.0;
+
+      for(int i = 0; i < num_leaves; ++i){
+	for(int j = 0; j <= index_by_leaf[i]; ++j){
+	  int bin = leaf_values[i][j].first;
+	  sum_left_gradient[i] += leaf_histograms[i][bin].sum_gradients;
+	  sum_left_hessian[i] += leaf_histograms[i][bin].sum_hessians;
+	  left_count[i] += leaf_histograms[i][bin].cnt;
+	}
+	double sum_right_gradient = leaf_splits_[i]->sum_gradients()-sum_left_gradient[i];
+	double sum_right_hessian = leaf_splits_[i]->sum_hessians()-sum_left_hessian[i];
+	gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient, sum_right_hessian,
+							   config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), 0);
+	current_gain += gain_per_node[i];
+      }
+
+      while(true){
+	bool split_acceptable = true;
+	bool no_further_splits = false;
+	//Check split blahblahblah.
+	for(int i = 0; i < num_leaves; ++i){
+	  if(left_count[i] < config_->min_data_in_leaf
+	     || left_count[i] < config_->min_data_per_group //This seems saner than the original version (bug?)
+	     || sum_left_hessian[i] < config_->min_sum_hessian_in_leaf){
+	    split_acceptable = false;
+	    break;
+	  }
+          data_size_t right_count = leaf_splits_[i]->num_data_in_leaf() - left_count[i];
+          if (right_count < config_->min_data_in_leaf || right_count < config_->min_data_per_group){
+	    no_further_splits = true;
+	    break;
+	  }
+
+          double sum_right_hessian = leaf_splits_[i]->sum_hessians() - sum_left_hessian[i];
+	  if (sum_right_hessian < config_->min_sum_hessian_in_leaf){
+	    no_further_splits = true;
+	    break;
+	  }
+	}
+	if(no_further_splits)
+	  break;
+	if(split_acceptable && current_gain > min_gain_shift){
+	  is_splittable = true;
+	  for(int i = 0; i < num_leaves; ++i){
+	    best_left_count[i] = left_count[i];
+	    best_sum_left_gradient[i] = sum_left_gradient[i];
+	    best_sum_left_hessian[i] = sum_left_hessian[i];
+	    best_threshold[i] = index_by_leaf[i];
+	    best_gain_per_node[i] = gain_per_node[i];
+	  }
+	  best_gain = current_gain;
+	}
+	//Advance to the next split point.
+	int min_idx = 0;
+	for(int i = 1; i < num_leaves; i++){
+	  if(leaf_values[i][index_by_leaf[i]+1].second < leaf_values[min_idx][index_by_leaf[min_idx]+1].second){
+	    min_idx = i;
+	  }
+	}
+	index_by_leaf[min_idx]++;
+	if(index_by_leaf[min_idx] == used_bin - 1)
+	  break;
+	int min_idx_bin = leaf_values[min_idx][index_by_leaf[min_idx]].first;
+	sum_left_gradient[min_idx] += leaf_histograms[min_idx][min_idx_bin].sum_gradients;
+	sum_left_hessian[min_idx] += leaf_histograms[min_idx][min_idx_bin].sum_hessians;
+	left_count[min_idx] += leaf_histograms[min_idx][min_idx_bin].cnt;
+	double sum_right_gradient = leaf_splits_[min_idx]->sum_gradients()-sum_left_gradient[min_idx];
+	double sum_right_hessian = leaf_splits_[min_idx]->sum_hessians()-sum_left_hessian[min_idx];
+	current_gain -= gain_per_node[min_idx];
+	gain_per_node[min_idx] = FeatureHistogram::GetSplitGains(sum_left_gradient[min_idx], sum_left_hessian[min_idx], sum_right_gradient, sum_right_hessian,
+								 config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+								 leaf_splits_[min_idx]->min_constraint(), leaf_splits_[min_idx]->max_constraint(), 0);
+	current_gain += gain_per_node[min_idx];
+      }
+    }
   }
 
   if (is_splittable) {
@@ -479,7 +618,12 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
         output.leaf_splits[i].num_cat_threshold = 1;
         output.leaf_splits[i].cat_threshold = std::vector<uint32_t>(1, static_cast<uint32_t>(best_threshold[i]));
       } else {
-	throw new std::runtime_error("WRITE ME");
+        output.leaf_splits[i].num_cat_threshold = best_threshold[i] + 1;
+        output.leaf_splits[i].cat_threshold = std::vector<uint32_t>(output.leaf_splits[i].num_cat_threshold);
+	for (int j = 0; i < output.leaf_splits[i].num_cat_threshold; ++j) {
+	  auto t = leaf_values[i][j].first;
+	  output.leaf_splits[i].cat_threshold[j] = t;
+	}
       }
       output.leaf_splits[i].monotone_type = 0;
       output.leaf_splits[i].min_constraint = leaf_splits_[i]->min_constraint();
