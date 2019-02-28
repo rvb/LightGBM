@@ -285,7 +285,7 @@ struct FeatureSplits{
 public:
   std::vector<SplitInfo> leaf_splits;
   double gain;
-  FeatureSplits(int num_features) : leaf_splits(num_features), gain(kMinScore){
+  FeatureSplits(int num_leaves) : leaf_splits(num_leaves), gain(kMinScore){
   }
   
 };

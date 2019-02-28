@@ -143,12 +143,11 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
 
   auto num_bin = train_data_->FeatureNumBin(feature_idx);
   auto default_bin = train_data_->FeatureBinMapper(feature_idx)->GetDefaultBin();
-  //TODO: Vectorise all the gradient sums.
   std::vector<double> best_sum_left_gradient(num_leaves, NAN);
   std::vector<double> best_sum_left_hessian(num_leaves, NAN);
   double best_gain = kMinScore;
   std::vector<double> best_gain_per_node(num_leaves, kMinScore);
-  std::vector<double> gain_per_node(num_leaves, kMinScore);    
+  std::vector<double> gain_per_node(num_leaves, kMinScore);
   std::vector<data_size_t> best_left_count(num_leaves,0);
   uint32_t best_threshold = static_cast<uint32_t>(num_bin);
 
@@ -378,11 +377,123 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
   return output;
 }
 
+FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+  FeatureSplits output(num_leaves);
+  auto bin_mapper = train_data_->FeatureBinMapper(feature_idx);
+  int num_bin = bin_mapper->num_bin();
+  bool is_full_categorical = bin_mapper->missing_type() == MissingType::None;
+  int used_bin = num_bin - 1 + is_full_categorical;
+  bool use_onehot = num_bin <= config_->max_cat_to_onehot;
+
+  std::vector<HistogramBinEntry*> leaf_histograms(num_leaves);
+  for(int i = 0; i < num_leaves; i++){
+    leaf_histograms[i] = histogram_arrs[i][feature_idx].RawData();
+  }
+  double best_gain = kMinScore;
+  std::vector<double> best_gain_per_node(num_leaves, kMinScore);
+  std::vector<double> best_sum_left_gradient(num_leaves, 0.0);
+  std::vector<double> best_sum_left_hessian(num_leaves, 0.0);
+  std::vector<data_size_t> best_left_count(num_leaves, 0);
+  std::vector<double> gain_per_node(num_leaves, kMinScore);
+  //Per-leaf, because multiple-category splits differ between nodes.
+  std::vector<uint32_t> best_threshold(num_leaves, 0);
+  bool is_splittable = false;
+  if(use_onehot){
+    for (int t = 0; t < used_bin; ++t) {
+
+      bool t_is_splittable = true;
+      for(int i = 0; i < num_leaves; ++i){
+	// if data not enough, or sum hessian too small
+	if (leaf_histograms[i][t].cnt < config_->min_data_in_leaf
+	    || leaf_histograms[i][t].sum_hessians < config_->min_sum_hessian_in_leaf) {
+	  t_is_splittable = false;
+	  break;
+	}
+
+	data_size_t other_count = leaf_splits_[i]->num_data_in_leaf() - leaf_histograms[i][t].cnt;
+	// if data not enough
+	if (other_count < config_->min_data_in_leaf){
+	  t_is_splittable = false;
+	  break;
+	}
+
+	double sum_other_hessian = leaf_splits_[i]->sum_hessians() - leaf_histograms[i][t].sum_hessians - kEpsilon;
+	// if sum hessian too small
+	if (sum_other_hessian < config_->min_sum_hessian_in_leaf){
+	  t_is_splittable = false;
+	  break;
+	}
+      }
+      if(!t_is_splittable) continue;
+
+      double current_gain = 0.0;
+      for(int i = 0; i < num_leaves; ++i){
+	double sum_other_gradient = leaf_splits_[i]->sum_gradients() - leaf_histograms[i][t].sum_gradients;	
+	double sum_other_hessian = leaf_splits_[i]->sum_hessians() - leaf_histograms[i][t].sum_hessians - kEpsilon;	
+	// current split gain
+	gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_other_gradient, sum_other_hessian, leaf_histograms[i][t].sum_gradients, leaf_histograms[i][t].sum_hessians + kEpsilon,
+							   config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), 0);
+	current_gain += gain_per_node[i];
+      }
+
+      // gain with split is worse than without split
+      if (current_gain <= min_gain_shift) continue;
+
+      // mark to is splittable
+      is_splittable = true;
+      // better split point
+      if (current_gain > best_gain) {
+	std::fill(best_threshold.begin(), best_threshold.end(), t);
+      	best_gain = current_gain;
+	for(int i = 0; i < num_leaves; ++i){
+	  best_gain_per_node[i] = gain_per_node[i];
+	  best_sum_left_gradient[i] = leaf_histograms[i][t].sum_gradients;
+	  best_sum_left_hessian[i] = leaf_histograms[i][t].sum_hessians + kEpsilon;
+	  best_left_count[i] = leaf_histograms[i][t].cnt;
+	}
+      }
+    }
+  } else {
+    throw new std::runtime_error("Decision table learner does not yet support large categorical features");
+  }
+
+  if (is_splittable) {
+    output.gain = best_gain - min_gain_shift;
+    for(int i = 0; i < num_leaves; ++i){
+      output.leaf_splits[i].left_output = FeatureHistogram::CalculateSplittedLeafOutput(best_sum_left_gradient[i], best_sum_left_hessian[i],
+											config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+											leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint());
+      output.leaf_splits[i].left_count = best_left_count[i];
+      output.leaf_splits[i].left_sum_gradient = best_sum_left_gradient[i];
+      output.leaf_splits[i].left_sum_hessian = best_sum_left_hessian[i] - kEpsilon;
+      output.leaf_splits[i].right_output = FeatureHistogram::CalculateSplittedLeafOutput(leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i],
+											 leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i],
+											 config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+											 leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint());
+      output.leaf_splits[i].right_count = leaf_splits_[i]->num_data_in_leaf() - best_left_count[i];
+      output.leaf_splits[i].right_sum_gradient = leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i];
+      output.leaf_splits[i].right_sum_hessian = leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i] - kEpsilon;
+      output.leaf_splits[i].gain = best_gain_per_node[i] - gain_shifts[i];
+      if (use_onehot) {
+        output.leaf_splits[i].num_cat_threshold = 1;
+        output.leaf_splits[i].cat_threshold = std::vector<uint32_t>(1, static_cast<uint32_t>(best_threshold[i]));
+      } else {
+	throw new std::runtime_error("WRITE ME");
+      }
+      output.leaf_splits[i].monotone_type = 0;
+      output.leaf_splits[i].min_constraint = leaf_splits_[i]->min_constraint();
+      output.leaf_splits[i].max_constraint = leaf_splits_[i]->max_constraint();
+    }
+  }
+  return output;
+}
+
 FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   if(train_data_->FeatureBinMapper(feature_idx)->bin_type() == BinType::NumericalBin){
     return FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
   } else {
-    throw std::runtime_error("Decision table learner does not currently support categorical features.");
+    return FindBestFeatureSplitCategorical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
   }
 }
 
