@@ -625,7 +625,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
   }
 
   if (is_splittable) {
-    output.gain = best_gain - min_gain_shift;
+    output.gain = best_gain;
     for(int i = 0; i < num_leaves; ++i){
       output.leaf_splits[i].left_output = FeatureHistogram::CalculateSplittedLeafOutput(best_sum_left_gradient[i], best_sum_left_hessian[i],
 											config_->lambda_l1, l2, config_->max_delta_step,
@@ -754,8 +754,6 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
 			       split_info.default_left);
       data_partition_->Split(left_leaf, train_data_, inner_feature_index,
 			     &split_info.threshold, 1, split_info.default_left, right_leaf);
-      leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
-      leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
     } else {
       std::vector<uint32_t> cat_bitset_inner = Common::ConstructBitset(split_info.cat_threshold.data(), split_info.num_cat_threshold);
       std::vector<int> threshold_int(split_info.num_cat_threshold);
@@ -779,7 +777,8 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
       data_partition_->Split(left_leaf, train_data_, inner_feature_index,
 			     cat_bitset_inner.data(), static_cast<int>(cat_bitset_inner.size()), split_info.default_left, right_leaf);
     }
-
+    leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
+    leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
     if (has_ordered_bin_) {
       // mark data that at left-leaf
       const data_size_t* indices = data_partition_->indices();
