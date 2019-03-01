@@ -368,12 +368,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
       }
     }    
   }
-  int real_fidx = train_data_->RealFeatureIndex(feature_idx);
-  output.gain -= min_gain_shift;
-  for(int i = 0; i < num_leaves; ++i){
-    output.leaf_splits[i].feature = real_fidx;
-    output.leaf_splits[i].gain -= gain_shifts[i];
-  }
   return output;
 }
 
@@ -613,7 +607,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
       output.leaf_splits[i].right_count = leaf_splits_[i]->num_data_in_leaf() - best_left_count[i];
       output.leaf_splits[i].right_sum_gradient = leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i];
       output.leaf_splits[i].right_sum_hessian = leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i] - kEpsilon;
-      output.leaf_splits[i].gain = best_gain_per_node[i] - gain_shifts[i];
+      output.leaf_splits[i].gain = best_gain_per_node[i];
       if (use_onehot) {
         output.leaf_splits[i].num_cat_threshold = 1;
         output.leaf_splits[i].cat_threshold = std::vector<uint32_t>(1, static_cast<uint32_t>(best_threshold[i]));
@@ -634,11 +628,19 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 }
 
 FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+  FeatureSplits output(num_leaves);
   if(train_data_->FeatureBinMapper(feature_idx)->bin_type() == BinType::NumericalBin){
-    return FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
+    output = FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
   } else {
-    return FindBestFeatureSplitCategorical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
+    output = FindBestFeatureSplitCategorical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
   }
+  int real_fidx = train_data_->RealFeatureIndex(feature_idx);
+  output.gain -= min_gain_shift;
+  for(int i = 0; i < num_leaves; ++i){
+    output.leaf_splits[i].feature = real_fidx;
+    output.leaf_splits[i].gain -= gain_shifts[i];
+  }
+  return output;
 }
 
 FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
@@ -839,7 +841,7 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   //Puts all data in the leaf.
   data_partition_->Init();
   leaf_splits_[0]->Init(0, data_partition_.get(), gradients, hessians);
-  int32_t cur_depth = 0;
+  int32_t cur_depth = 1;
   if (!forced_split_json.is_null()) {
     ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
   }
