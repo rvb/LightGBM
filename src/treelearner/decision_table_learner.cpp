@@ -481,11 +481,11 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	auto& bin = leaf_histograms[i][used_bins[j]];
 	leaf_values[i][j].first = used_bins[j];
 	leaf_values[i][j].second = ctr_fun(bin.sum_gradients, bin.sum_hessians);
-	std::sort(leaf_values[i].begin(), leaf_values[i].end(),
-		  [](std::pair<int,double> i, std::pair<int, double> j) {
-		    return i.second < j.second;
-		  });
       }
+      std::sort(leaf_values[i].begin(), leaf_values[i].end(),
+		[](std::pair<int,double> i, std::pair<int, double> j) {
+		  return i.second < j.second;
+		});
     }
 
     //Initialisation step:
@@ -537,7 +537,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
       while(true){
 	bool split_acceptable = true;
 	bool no_further_splits = false;
-	//Check split blahblahblah.
 	for(int i = 0; i < num_leaves; ++i){
 	  if(left_count[i] < config_->min_data_in_leaf
 	     || left_count[i] < config_->min_data_per_group //This seems saner than the original version (bug?)
@@ -561,14 +560,16 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	  break;
 	if(split_acceptable && current_gain > min_gain_shift){
 	  is_splittable = true;
-	  for(int i = 0; i < num_leaves; ++i){
-	    best_left_count[i] = left_count[i];
-	    best_sum_left_gradient[i] = sum_left_gradient[i];
-	    best_sum_left_hessian[i] = sum_left_hessian[i];
-	    best_threshold[i] = index_by_leaf[i];
-	    best_gain_per_node[i] = gain_per_node[i];
+	  if(current_gain > best_gain){
+	    for(int i = 0; i < num_leaves; ++i){
+	      best_left_count[i] = left_count[i];
+	      best_sum_left_gradient[i] = sum_left_gradient[i];
+	      best_sum_left_hessian[i] = sum_left_hessian[i];
+	      best_threshold[i] = index_by_leaf[i];
+	      best_gain_per_node[i] = gain_per_node[i];
+	    }
+	    best_gain = current_gain;
 	  }
-	  best_gain = current_gain;
 	}
 	//Advance to the next split point.
 	int min_idx = 0;
@@ -618,7 +619,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
       } else {
         output.leaf_splits[i].num_cat_threshold = best_threshold[i] + 1;
         output.leaf_splits[i].cat_threshold = std::vector<uint32_t>(output.leaf_splits[i].num_cat_threshold);
-	for (int j = 0; i < output.leaf_splits[i].num_cat_threshold; ++j) {
+	for (int j = 0; j < output.leaf_splits[i].num_cat_threshold; ++j) {
 	  auto t = leaf_values[i][j].first;
 	  output.leaf_splits[i].cat_threshold[j] = t;
 	}
