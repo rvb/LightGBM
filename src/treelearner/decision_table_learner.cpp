@@ -378,6 +378,10 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
   bool is_full_categorical = bin_mapper->missing_type() == MissingType::None;
   int used_bin = num_bin - 1 + is_full_categorical;
   bool use_onehot = num_bin <= config_->max_cat_to_onehot;
+  double l2 = config_->lambda_l2;
+  if(!use_onehot){
+    l2 += config_->cat_l2;
+  }
 
   std::vector<HistogramBinEntry*> leaf_histograms(num_leaves);
   for(int i = 0; i < num_leaves; i++){
@@ -427,7 +431,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	double sum_other_hessian = leaf_splits_[i]->sum_hessians() - leaf_histograms[i][t].sum_hessians - kEpsilon;	
 	// current split gain
 	gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_other_gradient, sum_other_hessian, leaf_histograms[i][t].sum_gradients, leaf_histograms[i][t].sum_hessians + kEpsilon,
-							   config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+							   config_->lambda_l1, l2, config_->max_delta_step,
 							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), 0);
 	current_gain += gain_per_node[i];
       }
@@ -525,7 +529,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	double sum_right_gradient = leaf_splits_[i]->sum_gradients()-sum_left_gradient[i];
 	double sum_right_hessian = leaf_splits_[i]->sum_hessians()-sum_left_hessian[i];
 	gain_per_node[i] = FeatureHistogram::GetSplitGains(sum_left_gradient[i], sum_left_hessian[i], sum_right_gradient, sum_right_hessian,
-							   config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+							   config_->lambda_l1, l2, config_->max_delta_step,
 							   leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint(), 0);
 	current_gain += gain_per_node[i];
       }
@@ -584,7 +588,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	double sum_right_hessian = leaf_splits_[min_idx]->sum_hessians()-sum_left_hessian[min_idx];
 	current_gain -= gain_per_node[min_idx];
 	gain_per_node[min_idx] = FeatureHistogram::GetSplitGains(sum_left_gradient[min_idx], sum_left_hessian[min_idx], sum_right_gradient, sum_right_hessian,
-								 config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+								 config_->lambda_l1, l2, config_->max_delta_step,
 								 leaf_splits_[min_idx]->min_constraint(), leaf_splits_[min_idx]->max_constraint(), 0);
 	current_gain += gain_per_node[min_idx];
       }
@@ -595,14 +599,14 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
     output.gain = best_gain - min_gain_shift;
     for(int i = 0; i < num_leaves; ++i){
       output.leaf_splits[i].left_output = FeatureHistogram::CalculateSplittedLeafOutput(best_sum_left_gradient[i], best_sum_left_hessian[i],
-											config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+											config_->lambda_l1, l2, config_->max_delta_step,
 											leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint());
       output.leaf_splits[i].left_count = best_left_count[i];
       output.leaf_splits[i].left_sum_gradient = best_sum_left_gradient[i];
       output.leaf_splits[i].left_sum_hessian = best_sum_left_hessian[i] - kEpsilon;
       output.leaf_splits[i].right_output = FeatureHistogram::CalculateSplittedLeafOutput(leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i],
 											 leaf_splits_[i]->sum_hessians() - best_sum_left_hessian[i],
-											 config_->lambda_l1, config_->cat_l2, config_->max_delta_step,
+											 config_->lambda_l1, l2, config_->max_delta_step,
 											 leaf_splits_[i]->min_constraint(), leaf_splits_[i]->max_constraint());
       output.leaf_splits[i].right_count = leaf_splits_[i]->num_data_in_leaf() - best_left_count[i];
       output.leaf_splits[i].right_sum_gradient = leaf_splits_[i]->sum_gradients() - best_sum_left_gradient[i];
