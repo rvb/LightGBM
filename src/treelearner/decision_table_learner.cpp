@@ -457,6 +457,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
   } else {
     std::vector<int> used_bins;
     std::vector<int> index_by_leaf(num_leaves,0);
+    double best_leaf_value_threshold;
 
     //Find categorical values that have enough data points to be worth including.
     for (int i = 0; i < used_bin; ++i) {
@@ -620,6 +621,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	      }
 	      best_gain = current_gain;
 	      best_direction = dir;
+	      best_leaf_value_threshold = threshold;
 	    }
 	  }
 	  //Advance to the next split point.
@@ -645,8 +647,26 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 								   config_->lambda_l1, l2, config_->max_delta_step,
 								   leaf_splits_[min_idx]->min_constraint(), leaf_splits_[min_idx]->max_constraint(), 0);
 	  current_gain += gain_per_node[min_idx];
+	  threshold = leaf_values[min_idx][index_by_leaf[min_idx]].second;
 	}
       }
+    }
+    if(best_gain > kMinScore){
+      for(int i = 0; i < num_leaves; ++i){
+	if(best_direction >= 0){
+	  for(int j = 0; j <= best_threshold[i]; ++j){
+	    if(leaf_values[i][j].second > best_leaf_value_threshold){
+	      throw std::runtime_error("Threshold should be the largest included value in leaf, it is not.");
+	    }
+	  }
+	} else {
+	  for(int j = best_threshold[i]; j <= used_bin-1; ++j){
+	    if(leaf_values[i][j].second < best_leaf_value_threshold){
+	      throw std::runtime_error("Threshold should be the smallest included value in leaf, it is not.");
+	    }
+	  }
+	}
+      }      
     }
   }
 
