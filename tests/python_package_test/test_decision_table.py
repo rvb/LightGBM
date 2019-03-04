@@ -189,7 +189,7 @@ class TestBasic(unittest.TestCase):
         M = 100
         K = 10
         for i in range(K):
-            for nvalues in (20,):#(4, 20):
+            for nvalues in (4, 20):
                 X = np.random.randint(0, nvalues, (N, M))
                 Y = np.random.random((N,))
                 ds = lgbm.Dataset(X, categorical_feature=list(range(M))).construct()

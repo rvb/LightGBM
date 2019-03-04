@@ -666,7 +666,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	    }
 	  }
 	}
-      }      
+      }
     }
   }
 
