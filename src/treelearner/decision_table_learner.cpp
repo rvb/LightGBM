@@ -31,14 +31,12 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   num_data_ = train_data_->num_data();
   auto num_leaves = 1 << tree_depth_;
   data_partition_.reset(new DataPartition(num_data_, num_leaves));  
-  //TODO: Do we bother with the cache-size config?
   histogram_pool_.DynamicChangeSize(train_data_, config_, num_leaves, num_leaves);
   leaf_splits_.resize(num_leaves);
   for(int i = 0; i < num_leaves; ++i){
     leaf_splits_[i].reset(new LeafSplits(num_data_));
   }
 
-  //TODO: Copypasta is fun, get on it!
   // get ordered bin
   train_data_->CreateOrderedBins(&ordered_bins_);
 
@@ -487,11 +485,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 		[](std::pair<int,double> i, std::pair<int, double> j) {
 		  return i.second < j.second;
 		});
-      std::cout << "DEBUG: Feature " << feature_idx << " leaf " << i << " bin values:";
-      for(auto& pair : leaf_values[i]){
-	std::cout << pair.first << " ; " << pair.second << ", ";
-      }
-      std::cout << std::endl;
     }
 
     std::vector<int> directions = {1, -1};
@@ -518,8 +511,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 
       int max_index = std::min(std::min(config_->max_cat_threshold - 1, (used_bin+1)/2), used_bin-2);
 
-      std::cout << "DEBUG: Direction " << dir << " threshold " << threshold << std::endl;;
-
       bool unsplittable = false;
       //Ensure each leaf index is the last value below threshold.
       for(int i = 0; i < num_leaves; ++i){
@@ -540,13 +531,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	}
       }
 
-      std::cout << "DEBUG: Unsplittable: " << unsplittable << std::endl;
-      std::cout << "DEBUG: max_index: " << max_index << std::endl;
-      std::cout << "DEBUG: Leaf idxs: ";
-      for(auto idx : index_by_leaf){
-	std::cout << idx << ", ";
-      }
-      std::cout << std::endl;
       if(!unsplittable){
 	//Statistics on the left-hand side of the split, by leaf.
 	std::vector<double> sum_left_gradient(num_leaves, 0.0);
@@ -589,20 +573,17 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	    if(left_count[i] < config_->min_data_in_leaf
 	       || left_count[i] < config_->min_data_per_group //This seems saner than the original version (bug?)
 	       || sum_left_hessian[i] < config_->min_sum_hessian_in_leaf){
-	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " too small on left" << std::endl;
 	      split_acceptable = false;
 	      break;
 	    }
 	    data_size_t right_count = leaf_splits_[i]->num_data_in_leaf() - left_count[i];
 	    if (right_count < config_->min_data_in_leaf || right_count < config_->min_data_per_group){
-	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " index " << index_by_leaf[i] << " too small on right, data " << leaf_splits_[i]->num_data_in_leaf() - left_count[i] << " min data " << config_->min_data_in_leaf << std::endl;
 	      no_further_splits = true;
 	      break;
 	    }
 
 	    double sum_right_hessian = leaf_splits_[i]->sum_hessians() - sum_left_hessian[i];
 	    if (sum_right_hessian < config_->min_sum_hessian_in_leaf){
-	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " too low hessian on right" << std::endl;
 	      no_further_splits = true;
 	      break;
 	    }
@@ -633,7 +614,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	    }
 	  }
 	  index_by_leaf[min_idx]+=dir;
-	  std::cout << "DEBUG: Change " << min_idx << " -> " << index_by_leaf[min_idx] << std::endl;	  
 	  if((dir == 1 && index_by_leaf[min_idx] > max_index) || (dir == -1 && used_bin - 1 - index_by_leaf[min_idx] > max_index))
 	    break;
 	  int min_idx_bin = leaf_values[min_idx][index_by_leaf[min_idx]].first;
@@ -737,7 +717,6 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   }
   std::vector<double> gain_shifts(num_leaves, kMinScore);
   for(int feature_idx = 0; feature_idx < train_data_->num_features(); ++feature_idx){
-    int real_feature_idx = train_data_->RealFeatureIndex(feature_idx);
     if(is_feature_used[feature_idx]){
       double min_shift_gain = 0.0;
       double additional_cost_per_node = config_->cegb_penalty_split;
@@ -782,7 +761,7 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
   for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
     int right_leaf;
-    auto split_info = split.leaf_splits[left_leaf];    
+    auto split_info = split.leaf_splits[left_leaf];
     if(is_numerical_split){
       auto threshold_double = train_data_->RealThreshold(inner_feature_index, split.leaf_splits[left_leaf].threshold);
       // split tree, will return right leaf
