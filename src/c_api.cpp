@@ -1395,6 +1395,15 @@ int LGBM_TreeCategoricalThreshold(TreeHandle handle,
   API_END();
 }
 
+int LGBM_TreeThreshold(TreeHandle handle,
+		       int split_index,
+		       double* out_threshold){
+  API_BEGIN();
+  Tree* ref_tree = reinterpret_cast<Tree*>(handle);
+  *out_threshold = ref_tree->threshold(split_index);
+  API_END();
+}
+
 int LGBM_NetworkInit(const char* machines,
                      int local_listen_port,
                      int listen_time_out,

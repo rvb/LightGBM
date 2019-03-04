@@ -98,7 +98,6 @@ class TestBasic(unittest.TestCase):
         ds = lgbm.Dataset(X, categorical_feature=[0,1]).construct()
         ds.set_label(Y)
 
-        learner = 'table'
         booster = lgbm.Booster(train_set=ds, params={'tree_learner': 'table', 'max_cat_to_onehot': 1})
         booster.update()
 
@@ -107,4 +106,43 @@ class TestBasic(unittest.TestCase):
         self.assertTrue(all(tree.is_categorical(i) for i in range(tree.num_splits())))
         self.assertEqual(0, tree.split_feature(0))
         self.assertEqual([2], tree.categorical_threshold(0))
+        
+    def test_numerical_split(self):
+        N = 1000
+        X = np.zeros((N, 1))
+
+        X[range(0,N,2),:] = 1
+        Y = X[:,0]
+
+        ds = lgbm.Dataset(X).construct()
+        ds.set_label(Y)
+
+        booster = lgbm.Booster(train_set=ds, params={'tree_learner': 'table', 'max_cat_to_onehot': 1})
+        booster.update()
+
+        tree = booster.get_tree(0,0)
+        self.assertEqual(1, tree.num_splits())
+        self.assertFalse(tree.is_categorical(0))
+        self.assertTrue(abs(tree.threshold(0)) < 1e-6)
+
+    def test_numerical_split_2level(self):
+        N = 1000
+        X = np.zeros((N, 2))
+
+        X[range(0,N,2),0] = 1
+        for i in range(2):
+            X[range(2*i,N,4),1] = i
+            X[range(2*i+1,N,4),1] = i
+        Y = X[:,0]+0.1*X[:,1]
+
+        ds = lgbm.Dataset(X).construct()
+        ds.set_label(Y)
+
+        booster = lgbm.Booster(train_set=ds, params={'tree_learner': 'table', 'max_cat_to_onehot': 1})
+        booster.update()
+
+        tree = booster.get_tree(0,0)
+        self.assertEqual(3, tree.num_splits())
+        self.assertFalse(any(tree.is_categorical(i) for i in range(tree.num_splits())))
+        self.assertTrue(all(abs(tree.threshold(i) < 1e-6) for i in range(tree.num_splits())))
         

@@ -2616,3 +2616,10 @@ class Tree(object):
                                                       ctypes.byref(num),
                                                       ctypes.byref(ptr)))
         return self._read_list(ptr, num)
+
+    def threshold(self, split_index):
+        num = ctypes.c_double()
+        _safe_call(_LIB.LGBM_TreeThreshold(self.handle,
+                                           split_index,
+                                           ctypes.byref(num)))
+        return num.value

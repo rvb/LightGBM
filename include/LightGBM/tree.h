@@ -128,6 +128,8 @@ class Tree {
 
   inline double split_gain(int split_idx) const { return split_gain_[split_idx]; }
 
+  inline double threshold(int split_idx) const { return threshold_[split_idx]; }
+
   /*! \brief Get the number of data points that fall at or below this node*/
   inline int data_count(int node) const { return node >= 0 ? internal_count_[node] : leaf_count_[~node]; }
 

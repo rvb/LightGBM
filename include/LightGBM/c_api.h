@@ -863,6 +863,10 @@ LIGHTGBM_C_EXPORT int LGBM_TreeCategoricalThreshold(TreeHandle handle,
 						    int* out_num,
 						    uint32_t** out_array);
 
+LIGHTGBM_C_EXPORT int LGBM_TreeThreshold(TreeHandle handle,
+					    int split_index,
+					    double* out_threshold);
+
 /*!
 * \brief Initilize the network
 * \param machines represent the nodes, format: ip1:port1,ip2:port2
