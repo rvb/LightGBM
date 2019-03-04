@@ -145,4 +145,36 @@ class TestBasic(unittest.TestCase):
         self.assertEqual(3, tree.num_splits())
         self.assertFalse(any(tree.is_categorical(i) for i in range(tree.num_splits())))
         self.assertTrue(all(abs(tree.threshold(i) < 1e-6) for i in range(tree.num_splits())))
+
+    def _tree_oblivious(self, tree):
+        num_leaves = tree.num_leaves()
+        num_levels = 0
+        while num_leaves > 1:
+            num_levels+= 1
+            num_leaves >>= 1
+        for i in range(num_levels):
+            split_features = []
+            split_thresholds = []
+            for node in range((1 << i)-1, (1 << (i + 1))- 1):
+                split_features.append(tree.split_feature(node))
+                split_thresholds.append(tree.threshold(node))
+            print('DEBUG: %d: %s, %s' % (i, split_features, split_thresholds))
+            if len(set(split_features)) > 1 or len(set(split_thresholds)) > 1:
+                return False
+        return True
         
+    def test_numerical_splits_generate_oblivious_trees(self):
+        N = 1000
+        M = 100
+        K = 10
+        for i in range(K):
+            X = np.random.random((N, M))
+            Y = np.random.random((N,))
+            ds = lgbm.Dataset(X).construct()
+            ds.set_label(Y)
+
+            booster = lgbm.Booster(train_set=ds, params={'tree_learner': 'table'})
+            booster.update()
+
+            tree = booster.get_tree(0,0)
+            self.assertTrue(self._tree_oblivious(tree))
