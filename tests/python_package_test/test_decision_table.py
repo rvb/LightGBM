@@ -158,7 +158,6 @@ class TestBasic(unittest.TestCase):
             for node in range((1 << i)-1, (1 << (i + 1))- 1):
                 split_features.append(tree.split_feature(node))
                 split_thresholds.append(tree.threshold(node))
-            print('DEBUG: %d: %s, %s' % (i, split_features, split_thresholds))
             if len(set(split_features)) > 1 or len(set(split_thresholds)) > 1:
                 return False
         return True
