@@ -739,4 +739,10 @@ void GBDT::ResetBaggingConfig(const Config* config, bool is_change_dataset) {
   }
 }
 
+const Tree* GBDT::GetTree(int num_iteration, int tree_index) const{
+  //TODO: Error handling, it's a good thing.
+  //TODO: Do the boostings all generate EXACTLY num_tree_per_iteration_ trees per iteration?
+  return models_[num_iteration*num_tree_per_iteration_+tree_index].get();
+}
+
 }  // namespace LightGBM

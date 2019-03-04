@@ -3,6 +3,7 @@
 
 #include <LightGBM/meta.h>
 #include <LightGBM/config.h>
+#include <LightGBM/tree.h>
 
 #include <vector>
 #include <string>
@@ -273,6 +274,11 @@ class LIGHTGBM_EXPORT Boosting {
   * \brief Name of submodel
   */
   virtual const char* SubModelName() const = 0;
+
+  /*!
+  * \brief Get tree from the submodel.
+  */
+  virtual const Tree* GetTree(int num_iteration, int tree_index) const = 0;
 
   Boosting() = default;
   /*! \brief Disable copy */

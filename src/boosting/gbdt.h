@@ -354,6 +354,11 @@ class GBDT : public GBDTBase {
   */
   virtual const char* SubModelName() const override { return "tree"; }
 
+  /*!
+  * \brief Get tree from the submodel.
+  */
+  virtual const Tree* GetTree(int num_iteration, int tree_index) const;
+
  protected:
   /*!
   * \brief Print eval result and check early stopping

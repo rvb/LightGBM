@@ -1970,6 +1970,11 @@ class Booster(object):
             ctypes.byref(out_cur_iter)))
         return out_cur_iter.value
 
+    def get_tree(self, iteration, tree):
+        tree = ctypes.c_void_p()
+        _safe_call(_LIB.LGBM_BoosterGetTree(self.handle, iteration, tree, ctypes.byref(tree)))
+        return Tree(tree)
+
     def num_model_per_iteration(self):
         """Get number of models per iteration.
 
@@ -2567,3 +2572,47 @@ class Booster(object):
             else:
                 self.__attr.pop(key, None)
         return self
+
+class Tree(object):
+    def __init__(self, handle):
+        self.handle = handle
+
+    def split_feature(self, split_index):
+        feature = ctypes.c_int()
+        _safe_call(_LIB.LGBM_TreeGetSplitFeature(self.handle,
+                                                 split_index,
+                                                 ctypes.byref(feature)))
+        return feature.value
+
+    def num_leaves(self):
+        num = ctypes.c_int()
+        _safe_call(_LIB.LGBM_TreeGetNumLeaves(self.handle,
+                                              ctypes.byref(num)))
+        return num.value
+
+    def num_splits(self):
+        return self.num_leaves() - 1
+
+    def is_categorical(self, split_index):
+        flag = ctypes.c_bool()
+        _safe_call(_LIB.LGBM_TreeIsSplitCategorical(self.handle,
+                                                    split_index,
+                                                    ctypes.byref(flag)))
+        return flag.value
+
+    def _read_list(self, ptr, num):
+        res = []
+        for i in range(num.value):
+            for j in range(32):
+                if ptr[i] & (1 << j) > 0:
+                    res.append(32*i + j)
+        return res
+
+    def categorical_threshold(self, split_index):
+        ptr = ctypes.POINTER(ctypes.c_uint32)()
+        num = ctypes.c_int()
+        _safe_call(_LIB.LGBM_TreeCategoricalThreshold(self.handle,
+                                                      split_index,
+                                                      ctypes.byref(num),
+                                                      ctypes.byref(ptr)))
+        return self._read_list(ptr, num)

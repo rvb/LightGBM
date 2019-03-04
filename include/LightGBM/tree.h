@@ -203,6 +203,18 @@ class Tree {
 
   void RecomputeMaxDepth();
 
+  bool is_categorical(int node){
+    return (bool)GetDecisionType(decision_type_[node], kCategoricalMask);
+  }
+
+  int categorical_threshold(int node, uint32_t** threshold){
+    auto base_ptr = cat_threshold_.data();
+    auto bound_index = threshold_[node];
+    auto start = cat_boundaries_[bound_index], end = cat_boundaries_[bound_index+1];
+    *threshold = base_ptr + start;
+    return end - start;
+  }
+
  private:
   std::string NumericalDecisionIfElse(int node) const;
 

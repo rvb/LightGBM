@@ -1348,6 +1348,53 @@ int LGBM_BoosterFeatureImportance(BoosterHandle handle,
   API_END();
 }
 
+int LGBM_BoosterGetTree(BoosterHandle handle,
+			int num_iteration,
+			int tree_index,
+			TreeHandle* out_handle){
+  API_BEGIN();
+  Booster* ref_booster = reinterpret_cast<Booster*>(handle);
+  auto boosting = ref_booster->GetBoosting();
+  *out_handle = (TreeHandle)boosting->GetTree(num_iteration, tree_index);
+  API_END();
+}
+
+int LGBM_TreeGetSplitFeature(TreeHandle handle,
+			     int split_index,
+			     int* out_feature){
+  API_BEGIN();
+  Tree* ref_tree = reinterpret_cast<Tree*>(handle);
+  *out_feature = ref_tree->split_feature(split_index);
+  API_END();
+}
+
+int LGBM_TreeGetNumLeaves(TreeHandle handle,
+			  int* out_num){
+  API_BEGIN();
+  Tree* ref_tree = reinterpret_cast<Tree*>(handle);
+  *out_num = ref_tree->num_leaves();
+  API_END();
+}
+
+int LGBM_TreeIsSplitCategorical(TreeHandle handle,
+				int split_index,
+				bool* out_bool){
+  API_BEGIN();
+  Tree* ref_tree = reinterpret_cast<Tree*>(handle);
+  *out_bool = ref_tree->is_categorical(split_index);
+  API_END();
+}
+
+int LGBM_TreeCategoricalThreshold(TreeHandle handle,
+				  int split_index,
+				  int* out_num,
+				  uint32_t** out_array){
+  API_BEGIN();
+  Tree* ref_tree = reinterpret_cast<Tree*>(handle);
+  *out_num = ref_tree->categorical_threshold(split_index, out_array);
+  API_END();
+}
+
 int LGBM_NetworkInit(const char* machines,
                      int local_listen_port,
                      int listen_time_out,

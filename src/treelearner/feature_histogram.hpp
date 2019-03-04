@@ -201,6 +201,7 @@ class FeatureHistogram {
           left_count += data_[t].cnt;
           cnt_cur_group += data_[t].cnt;
 
+	  std::cout << "DEBUG: pos " << start_pos << " cnt_cur_group " << cnt_cur_group << std::endl;
           if (left_count < meta_->config->min_data_in_leaf
               || sum_left_hessian < meta_->config->min_sum_hessian_in_leaf) continue;
           data_size_t right_count = num_data - left_count;
@@ -253,8 +254,10 @@ class FeatureHistogram {
         output->num_cat_threshold = best_threshold + 1;
         output->cat_threshold = std::vector<uint32_t>(output->num_cat_threshold);
         if (best_dir == 1) {
+	  std::cout << "DEBUG: Cat threshold values:"<<std::endl;
           for (int i = 0; i < output->num_cat_threshold; ++i) {
             auto t = sorted_idx[i];
+	    std::cout << "DEBUG: " << t << std::endl;
             output->cat_threshold[i] = t;
           }
         } else {

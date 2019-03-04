@@ -16,6 +16,7 @@
 
 typedef void* DatasetHandle;
 typedef void* BoosterHandle;
+typedef void* TreeHandle;
 
 #define C_API_DTYPE_FLOAT32 (0)
 #define C_API_DTYPE_FLOAT64 (1)
@@ -832,6 +833,35 @@ LIGHTGBM_C_EXPORT int LGBM_BoosterFeatureImportance(BoosterHandle handle,
                                                     int num_iteration,
                                                     int importance_type,
                                                     double* out_results);
+
+/*!
+* \brief get a tree from the model
+* \param handle handle
+* \param num_iteration, iteration number
+* \param tree_index, tree index
+* \param out_handle output handle
+* \return 0 when succeed, -1 when failure happens
+*/
+LIGHTGBM_C_EXPORT int LGBM_BoosterGetTree(BoosterHandle handle,
+					  int num_iteration,
+					  int tree_index,
+					  TreeHandle* out_handle);
+
+LIGHTGBM_C_EXPORT int LGBM_TreeGetSplitFeature(TreeHandle handle,
+					       int split_index,
+					       int* out_feature);
+
+LIGHTGBM_C_EXPORT int LGBM_TreeGetNumLeaves(TreeHandle handle,
+					    int* out_num);
+
+LIGHTGBM_C_EXPORT int LGBM_TreeIsSplitCategorical(TreeHandle handle,
+						  int split_index,
+						  bool* out_bool);
+
+LIGHTGBM_C_EXPORT int LGBM_TreeCategoricalThreshold(TreeHandle handle,
+						    int split_index,
+						    int* out_num,
+						    uint32_t** out_array);
 
 /*!
 * \brief Initilize the network
