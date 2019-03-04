@@ -455,7 +455,6 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
       }
     }
   } else {
-    //TODO: Fix L2 penalties.
     std::vector<int> used_bins;
     std::vector<int> index_by_leaf(num_leaves,0);
 
@@ -590,33 +589,20 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	       || left_count[i] < config_->min_data_per_group //This seems saner than the original version (bug?)
 	       || sum_left_hessian[i] < config_->min_sum_hessian_in_leaf){
 	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " too small on left" << std::endl;
-	      if(dir == 1){
-		split_acceptable = false;
-	      } else {
-		no_further_splits = true;
-	      }
-	      
+	      split_acceptable = false;
 	      break;
 	    }
 	    data_size_t right_count = leaf_splits_[i]->num_data_in_leaf() - left_count[i];
 	    if (right_count < config_->min_data_in_leaf || right_count < config_->min_data_per_group){
 	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " index " << index_by_leaf[i] << " too small on right, data " << leaf_splits_[i]->num_data_in_leaf() - left_count[i] << " min data " << config_->min_data_in_leaf << std::endl;
-	      if(dir == 1){
-		no_further_splits = true;
-	      } else {
-		split_acceptable = false;
-	      }
+	      no_further_splits = true;
 	      break;
 	    }
 
 	    double sum_right_hessian = leaf_splits_[i]->sum_hessians() - sum_left_hessian[i];
 	    if (sum_right_hessian < config_->min_sum_hessian_in_leaf){
 	      std::cout << "DEBUG: feature " << feature_idx << " leaf "  << i << " too low hessian on right" << std::endl;
-	      if(dir == 1){
-		no_further_splits = true;
-	      } else {
-		split_acceptable = false;
-	      }	      
+	      no_further_splits = true;
 	      break;
 	    }
 	  }
@@ -640,7 +626,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 	  int min_idx = 0;
 	  for(int i = 1; i < num_leaves; i++){
 	    if((dir == 1 && leaf_values[i][index_by_leaf[i]+1].second < leaf_values[min_idx][index_by_leaf[min_idx]+1].second)
-	       || (dir == -1 && leaf_values[i][index_by_leaf[i]+1].second > leaf_values[min_idx][index_by_leaf[min_idx]+1].second)){
+	       || (dir == -1 && leaf_values[i][index_by_leaf[i]-1].second > leaf_values[min_idx][index_by_leaf[min_idx]-1].second)){
 	      min_idx = i;
 	    }
 	  }
