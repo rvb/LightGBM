@@ -16,6 +16,10 @@
 
 typedef void* DatasetHandle;
 typedef void* BoosterHandle;
+typedef void* ConfigHandle;
+typedef void* HistogramHandle;
+
+typedef int (*SplitFunction)(ConfigHandle, HistogramHandle);
 
 #define C_API_DTYPE_FLOAT32 (0)
 #define C_API_DTYPE_FLOAT64 (1)
@@ -457,6 +461,8 @@ LIGHTGBM_C_EXPORT int LGBM_BoosterResetTrainingData(BoosterHandle handle,
 * \return 0 when succeed, -1 when failure happens
 */
 LIGHTGBM_C_EXPORT int LGBM_BoosterResetParameter(BoosterHandle handle, const char* parameters);
+
+LIGHTGBM_C_EXPORT int LGBM_BoosterSetSplitFunction(BoosterHandle handle, SplitFunction callback);
 
 /*!
 * \brief Get number of class

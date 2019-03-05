@@ -7,6 +7,7 @@
 #include <LightGBM/utils/log.h>
 #include <LightGBM/dataset_loader.h>
 #include <LightGBM/dataset.h>
+#include <LightGBM/feature_histogram.h>
 #include <LightGBM/boosting.h>
 #include <LightGBM/objective_function.h>
 #include <LightGBM/metric.h>
@@ -42,6 +43,18 @@ catch(std::exception& ex) { return LGBM_APIHandleException(ex); } \
 catch(std::string& ex) { return LGBM_APIHandleException(ex); } \
 catch(...) { return LGBM_APIHandleException("unknown exception"); } \
 return 0;
+
+class SplitFunctionCallback : public SplitCallback {
+ public:
+  SplitFunctionCallback(SplitFunction fn) : function_(fn){}
+
+  int SplitPoint(const Config* config, const FeatureHistogram* hist) override {
+    return function_((ConfigHandle)config, (HistogramHandle)hist);
+  }
+
+ private:
+  SplitFunction function_;
+};
 
 class Booster {
  public:
@@ -155,6 +168,10 @@ class Booster {
     }
 
     boosting_->ResetConfig(&config_);
+  }
+
+  void SetSplitCallback(SplitCallback* callback){
+    boosting_->SetSplitCallback(callback);
   }
 
   void AddValidData(const Dataset* valid_data) {
@@ -999,6 +1016,13 @@ int LGBM_BoosterResetParameter(BoosterHandle handle, const char* parameters) {
   API_BEGIN();
   Booster* ref_booster = reinterpret_cast<Booster*>(handle);
   ref_booster->ResetConfig(parameters);
+  API_END();
+}
+
+int LGBM_BoosterSetSplitFunction(BoosterHandle handle, SplitFunction callback){
+  API_BEGIN();
+  Booster* ref_booster = reinterpret_cast<Booster*>(handle);
+  ref_booster->SetSplitCallback(new SplitFunctionCallback(callback));
   API_END();
 }
 

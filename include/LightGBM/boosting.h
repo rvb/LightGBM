@@ -3,6 +3,7 @@
 
 #include <LightGBM/meta.h>
 #include <LightGBM/config.h>
+#include <LightGBM/tree_learner.h>
 
 #include <vector>
 #include <string>
@@ -54,7 +55,7 @@ class LIGHTGBM_EXPORT Boosting {
 
   virtual void ResetConfig(const Config* config) = 0;
 
-
+  virtual void SetSplitCallback(SplitCallback* callback) = 0;
 
   /*!
   * \brief Add a validation data

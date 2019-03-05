@@ -522,13 +522,27 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                               smaller_leaf_splits_->num_data_in_leaf(),
                               smaller_leaf_histogram_array_[feature_index].RawData());
     int real_fidx = train_data_->RealFeatureIndex(feature_index);
-    smaller_leaf_histogram_array_[feature_index].FindBestThreshold(
-      smaller_leaf_splits_->sum_gradients(),
-      smaller_leaf_splits_->sum_hessians(),
-      smaller_leaf_splits_->num_data_in_leaf(),
-      smaller_leaf_splits_->min_constraint(),
-      smaller_leaf_splits_->max_constraint(),
-      &smaller_split);
+    if(split_callback_){
+      auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index);
+      if(threshold >= 0){
+        smaller_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
+	  smaller_leaf_splits_->sum_gradients(),
+	  smaller_leaf_splits_->sum_gradients(),
+	  threshold,
+	  smaller_leaf_splits_->num_data_in_leaf(),
+	  &smaller_split);
+        smaller_split.min_constraint = smaller_leaf_splits_->min_constraint();
+        smaller_split.max_constraint = smaller_leaf_splits_->max_constraint();
+      }
+    } else {
+      smaller_leaf_histogram_array_[feature_index].FindBestThreshold(
+        smaller_leaf_splits_->sum_gradients(),
+        smaller_leaf_splits_->sum_hessians(),
+        smaller_leaf_splits_->num_data_in_leaf(),
+        smaller_leaf_splits_->min_constraint(),
+        smaller_leaf_splits_->max_constraint(),
+        &smaller_split);
+    }
     smaller_split.feature = real_fidx;
     smaller_split.gain -= config_->cegb_tradeoff * config_->cegb_penalty_split * smaller_leaf_splits_->num_data_in_leaf();
     if(!config_->cegb_penalty_feature_coupled.empty() && !feature_used[feature_index]){
@@ -552,14 +566,28 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                                 larger_leaf_histogram_array_[feature_index].RawData());
     }
     SplitInfo larger_split;
+    if(split_callback_){
+      auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index);
+      if(threshold >= 0){
+        larger_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
+  	  larger_leaf_splits_->sum_gradients(),
+	  larger_leaf_splits_->sum_gradients(),
+	  threshold,
+	  larger_leaf_splits_->num_data_in_leaf(),
+	  &larger_split);
+	larger_split.min_constraint = larger_leaf_splits_->min_constraint();
+	larger_split.max_constraint = larger_leaf_splits_->max_constraint();
+      }
+    } else {
     // find best threshold for larger child
-    larger_leaf_histogram_array_[feature_index].FindBestThreshold(
-      larger_leaf_splits_->sum_gradients(),
-      larger_leaf_splits_->sum_hessians(),
-      larger_leaf_splits_->num_data_in_leaf(),
-      larger_leaf_splits_->min_constraint(),
-      larger_leaf_splits_->max_constraint(),
-      &larger_split);
+      larger_leaf_histogram_array_[feature_index].FindBestThreshold(
+        larger_leaf_splits_->sum_gradients(),
+        larger_leaf_splits_->sum_hessians(),
+        larger_leaf_splits_->num_data_in_leaf(),
+        larger_leaf_splits_->min_constraint(),
+        larger_leaf_splits_->max_constraint(),
+        &larger_split);
+    }
     larger_split.feature = real_fidx;
     larger_split.gain -= config_->cegb_tradeoff * config_->cegb_penalty_split * larger_leaf_splits_->num_data_in_leaf();
     if(!config_->cegb_penalty_feature_coupled.empty() && !feature_used[feature_index]){

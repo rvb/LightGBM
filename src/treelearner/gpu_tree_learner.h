@@ -6,10 +6,10 @@
 #include <LightGBM/dataset.h>
 #include <LightGBM/tree.h>
 #include <LightGBM/feature_group.h>
-#include "feature_histogram.hpp"
+#include <LightGBM/feature_histogram.h>
+#include <LightGBM/split_info.h>
 #include "serial_tree_learner.h"
 #include "data_partition.hpp"
-#include "split_info.hpp"
 #include "leaf_splits.hpp"
 
 #include <cstdio>
