@@ -10,8 +10,8 @@
 
 #include <LightGBM/feature_histogram.h>
 #include <LightGBM/split_info.h>
-#include "data_partition.hpp"
-#include "leaf_splits.hpp"
+#include <LightGBM/data_partition.h>
+#include <LightGBM/leaf_splits.h>
 
 #include <cstdio>
 #include <vector>

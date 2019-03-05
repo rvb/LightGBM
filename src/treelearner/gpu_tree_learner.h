@@ -8,9 +8,9 @@
 #include <LightGBM/feature_group.h>
 #include <LightGBM/feature_histogram.h>
 #include <LightGBM/split_info.h>
+#include <LightGBM/data_partition.h>
+#include <LightGBM/leaf_splits.h>
 #include "serial_tree_learner.h"
-#include "data_partition.hpp"
-#include "leaf_splits.hpp"
 
 #include <cstdio>
 #include <vector>

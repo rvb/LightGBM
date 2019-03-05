@@ -18,8 +18,9 @@ typedef void* DatasetHandle;
 typedef void* BoosterHandle;
 typedef void* ConfigHandle;
 typedef void* HistogramHandle;
+typedef void* LeafSplitHandle;
 
-typedef int (*SplitFunction)(ConfigHandle, HistogramHandle);
+typedef int (*SplitFunction)(ConfigHandle, HistogramHandle, LeafSplitHandle);
 
 #define C_API_DTYPE_FLOAT32 (0)
 #define C_API_DTYPE_FLOAT64 (1)
@@ -869,6 +870,10 @@ LIGHTGBM_C_EXPORT int LGBM_HistogramCount(HistogramHandle handle, int bin, int32
 LIGHTGBM_C_EXPORT int LGBM_HistogramSumGradients(HistogramHandle handle, int bin, double* out);
 LIGHTGBM_C_EXPORT int LGBM_HistogramSumHessians(HistogramHandle handle, int bin, double* out);
 LIGHTGBM_C_EXPORT int LGBM_SplitGain(double left_gradients, double left_hessians, double right_gradients, double right_hessians, double l1, double l2, double max_delta_step, double min_constraint, double max_constraint, int8_t monotone_constraint, double* out);
+
+LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL1(ConfigHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL2(ConfigHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out);
 
 
 #if defined(_MSC_VER)

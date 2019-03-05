@@ -1,5 +1,5 @@
-#ifndef LIGHTGBM_TREELEARNER_DATA_PARTITION_HPP_
-#define LIGHTGBM_TREELEARNER_DATA_PARTITION_HPP_
+#ifndef LIGHTGBM_DATA_PARTITION_H_
+#define LIGHTGBM_DATA_PARTITION_H_
 
 #include <LightGBM/meta.h>
 #include <LightGBM/dataset.h>
@@ -222,4 +222,4 @@ class DataPartition {
 };
 
 }  // namespace LightGBM
-#endif   // LightGBM_TREELEARNER_DATA_PARTITION_HPP_
+#endif   // LightGBM_DATA_PARTITION_H_

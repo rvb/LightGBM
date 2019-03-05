@@ -1,10 +1,10 @@
-#ifndef LIGHTGBM_TREELEARNER_LEAF_SPLITS_HPP_
-#define LIGHTGBM_TREELEARNER_LEAF_SPLITS_HPP_
+#ifndef LIGHTGBM_LEAF_SPLITS_H_
+#define LIGHTGBM_LEAF_SPLITS_H_
 
 #include <limits>
 
 #include <LightGBM/meta.h>
-#include "data_partition.hpp"
+#include <LightGBM/data_partition.h>
 
 #include <vector>
 
@@ -159,4 +159,4 @@ class LeafSplits {
 };
 
 }  // namespace LightGBM
-#endif   // LightGBM_TREELEARNER_LEAF_SPLITS_HPP_
+#endif   // LightGBM_LEAF_SPLITS_H_

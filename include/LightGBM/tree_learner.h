@@ -5,6 +5,7 @@
 #include <LightGBM/meta.h>
 #include <LightGBM/config.h>
 #include <LightGBM/feature_histogram.h>
+#include <LightGBM/leaf_splits.h>
 #include <LightGBM/json11.hpp>
 
 #include <vector>
@@ -20,7 +21,7 @@ class ObjectiveFunction;
 
 class SplitCallback {
 public:
-  virtual int SplitPoint(const Config* config, const FeatureHistogram* histogram) = 0;
+  virtual int SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits) = 0;
 };
 
 /*!

@@ -523,7 +523,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                               smaller_leaf_histogram_array_[feature_index].RawData());
     int real_fidx = train_data_->RealFeatureIndex(feature_index);
     if(split_callback_){
-      auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index);
+      auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index, smaller_leaf_splits_.get());
       if(threshold >= 0){
         smaller_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
 	  smaller_leaf_splits_->sum_gradients(),
@@ -567,7 +567,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
     }
     SplitInfo larger_split;
     if(split_callback_){
-      auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index);
+      auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index, larger_leaf_splits_.get());
       if(threshold >= 0){
         larger_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
   	  larger_leaf_splits_->sum_gradients(),

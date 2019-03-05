@@ -48,8 +48,8 @@ class SplitFunctionCallback : public SplitCallback {
  public:
   SplitFunctionCallback(SplitFunction fn) : function_(fn){}
 
-  int SplitPoint(const Config* config, const FeatureHistogram* hist) override {
-    return function_((ConfigHandle)config, (HistogramHandle)hist);
+  int SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split) override {
+    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split);
   }
 
  private:
@@ -1452,6 +1452,27 @@ int LGBM_SplitGain(double left_gradients, double left_hessians, double right_gra
     min_constraint,
     max_constraint,
     monotone_constraint);
+  API_END();
+}
+
+int LGBM_ConfigLambdaL1(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->lambda_l1;
+  API_END();
+}
+
+int LGBM_ConfigLambdaL2(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->lambda_l2;
+  API_END();
+}
+
+int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->max_delta_step;
   API_END();
 }
 
