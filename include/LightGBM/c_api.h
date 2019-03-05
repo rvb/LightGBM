@@ -862,6 +862,13 @@ LIGHTGBM_C_EXPORT int LGBM_NetworkInitWithFunctions(int num_machines, int rank,
                                                     void* reduce_scatter_ext_fun,
                                                     void* allgather_ext_fun);
 
+LIGHTGBM_C_EXPORT int LGBM_HistogramNumBins(HistogramHandle handle, int* out);
+LIGHTGBM_C_EXPORT int LGBM_HistogramBias(HistogramHandle handle, int* out);
+LIGHTGBM_C_EXPORT int LGBM_HistogramNumBins(HistogramHandle handle, int* out);
+LIGHTGBM_C_EXPORT int LGBM_HistogramCount(HistogramHandle handle, int bin, int32_t* out);
+LIGHTGBM_C_EXPORT int LGBM_HistogramSumGradients(HistogramHandle handle, int bin, double* out);
+LIGHTGBM_C_EXPORT int LGBM_HistogramSumHessians(HistogramHandle handle, int bin, double* out);
+
 
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)

@@ -133,6 +133,12 @@ class FeatureHistogram {
     }
   }
 
+  int num_bins(){ return meta_->num_bin;}
+  int bias(){return meta_->bias;}
+  data_size_t count(int bin){ return data_[bin].cnt;}
+  double sum_gradients(int bin){ return data_[bin].sum_gradients;}
+  double sum_hessians(int bin){ return data_[bin].sum_hessians;}
+
  private:
   static double GetSplitGains(double sum_left_gradients, double sum_left_hessians,
                               double sum_right_gradients, double sum_right_hessians,

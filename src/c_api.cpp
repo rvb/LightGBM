@@ -1404,6 +1404,41 @@ int LGBM_NetworkInitWithFunctions(int num_machines, int rank,
   API_END();
 }
 
+int LGBM_HistogramNumBins(HistogramHandle handle, int* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->num_bins();
+  API_END();
+}
+
+int LGBM_HistogramBias(HistogramHandle handle, int* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->bias();
+  API_END();
+}
+
+int LGBM_HistogramCount(HistogramHandle handle, int bin, int32_t* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->count(bin);
+  API_END();
+}
+
+int LGBM_HistogramSumGradients(HistogramHandle handle, int bin, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->sum_gradients(bin);
+  API_END();
+}
+
+int LGBM_HistogramSumHessians(HistogramHandle handle, int bin, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->sum_hessians(bin);
+  API_END();
+}
+
 // ---- start of some help functions
 
 std::function<std::vector<double>(int row_idx)>
