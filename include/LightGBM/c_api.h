@@ -875,6 +875,12 @@ LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL1(ConfigHandle handle, double* out);
 LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL2(ConfigHandle handle, double* out);
 LIGHTGBM_C_EXPORT int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out);
 
+LIGHTGBM_C_EXPORT int LGBM_LeafSplitNumData(LeafSplitHandle handle, int32_t* out);
+LIGHTGBM_C_EXPORT int LGBM_LeafSplitSumGradients(LeafSplitHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_LeafSplitSumHessians(LeafSplitHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_LeafSplitMinConstraint(LeafSplitHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_LeafSplitMaxConstraint(LeafSplitHandle handle, double* out);
+
 
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)

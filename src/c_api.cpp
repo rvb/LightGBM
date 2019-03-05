@@ -1476,6 +1476,41 @@ int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out){
   API_END();
 }
 
+int LGBM_LeafSplitNumData(ConfigHandle handle, int32_t* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const LeafSplits*>(handle);
+  *out = ptr->num_data_in_leaf();
+  API_END();
+}
+
+int LGBM_LeafSplitSumGradients(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const LeafSplits*>(handle);
+  *out = ptr->sum_gradients();
+  API_END();
+}
+
+int LGBM_LeafSplitSumHessians(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const LeafSplits*>(handle);
+  *out = ptr->sum_hessians();
+  API_END();
+}
+
+int LGBM_LeafSplitMinConstraint(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const LeafSplits*>(handle);
+  *out = ptr->min_constraint();
+  API_END();
+}
+
+int LGBM_LeafSplitMaxConstraint(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const LeafSplits*>(handle);
+  *out = ptr->max_constraint();
+  API_END();
+}
+
 // ---- start of some help functions
 
 std::function<std::vector<double>(int row_idx)>
