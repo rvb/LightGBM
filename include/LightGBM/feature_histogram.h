@@ -139,7 +139,6 @@ class FeatureHistogram {
   double sum_gradients(int bin){ return data_[bin].sum_gradients;}
   double sum_hessians(int bin){ return data_[bin].sum_hessians;}
 
- private:
   static double GetSplitGains(double sum_left_gradients, double sum_left_hessians,
                               double sum_right_gradients, double sum_right_hessians,
                               double l1, double l2, double max_delta_step,
@@ -153,6 +152,8 @@ class FeatureHistogram {
     return GetLeafSplitGainGivenOutput(sum_left_gradients, sum_left_hessians, l1, l2, left_output)
       + GetLeafSplitGainGivenOutput(sum_right_gradients, sum_right_hessians, l1, l2, right_output);
   }
+
+ private:
 
   /*!
   * \brief Calculate the output of a leaf based on regularized sum_gradients and sum_hessians
