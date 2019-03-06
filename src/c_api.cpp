@@ -1534,6 +1534,13 @@ int LGBM_LeafSplitMaxConstraint(ConfigHandle handle, double* out){
   API_END();
 }
 
+int LGBM_CategoricalSplitAdd(CategoricalSplitHandle handle, uint32_t category){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<std::vector<uint32_t>*>(handle);
+  ptr->push_back(category);
+  API_END();
+}
+
 // ---- start of some help functions
 
 std::function<std::vector<double>(int row_idx)>

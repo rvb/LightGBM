@@ -886,6 +886,8 @@ LIGHTGBM_C_EXPORT int LGBM_LeafSplitSumHessians(LeafSplitHandle handle, double* 
 LIGHTGBM_C_EXPORT int LGBM_LeafSplitMinConstraint(LeafSplitHandle handle, double* out);
 LIGHTGBM_C_EXPORT int LGBM_LeafSplitMaxConstraint(LeafSplitHandle handle, double* out);
 
+LIGHTGBM_C_EXPORT int LGBM_CategoricalSplitAdd(CategoricalSplitHandle handle, uint32_t category);
+
 
 #if defined(_MSC_VER)
 #define THREAD_LOCAL __declspec(thread)
