@@ -1,4 +1,5 @@
 #include<LightGBM/feature_histogram.h>
+#include<vector>
 
 namespace LightGBM {
 
@@ -311,7 +312,7 @@ void FeatureHistogram::GatherInfoForThresholdNumerical(double sum_gradient, doub
 }
 
 void FeatureHistogram::GatherInfoForThresholdCategorical(double sum_gradient, double sum_hessian,
-				       uint32_t threshold, data_size_t num_data, SplitInfo *output) {
+					  std::vector<uint32_t> threshold, data_size_t num_data, SplitInfo *output) {
   // get SplitInfo for a given one-hot categorical split.
   output->default_left = false;
   double gain_shift = GetLeafSplitGain(
@@ -321,18 +322,25 @@ void FeatureHistogram::GatherInfoForThresholdCategorical(double sum_gradient, do
   double min_gain_shift = gain_shift + meta_->config->min_gain_to_split;
   bool is_full_categorical = meta_->missing_type == MissingType::None;
   int used_bin = meta_->num_bin - 1 + is_full_categorical;
-  if (threshold >= static_cast<uint32_t>(used_bin)) {
-    output->gain = kMinScore;
-    Log::Warning("Invalid categorical threshold split");
-    return;
+  for(auto t : threshold){
+    if (t >= static_cast<uint32_t>(used_bin)) {
+      output->gain = kMinScore;
+      Log::Warning("Invalid categorical threshold split");
+      return;
+    }
   }
 
   double l2 = meta_->config->lambda_l2;
-  data_size_t left_count = data_[threshold].cnt;
+  data_size_t left_count = 0;
+  double sum_left_hessian = kEpsilon;
+  double sum_left_gradient = 0;
+  for(auto t : threshold){
+    left_count += data_[t].cnt;
+    sum_left_hessian += data_[t].sum_hessians;
+    sum_left_gradient += data_[t].sum_gradients;
+  }
   data_size_t right_count = num_data - left_count;
-  double sum_left_hessian = data_[threshold].sum_hessians + kEpsilon;
   double sum_right_hessian = sum_hessian - sum_left_hessian;
-  double sum_left_gradient = data_[threshold].sum_gradients;
   double sum_right_gradient = sum_gradient - sum_left_gradient;
   // current split gain
   double current_gain = GetLeafSplitGain(sum_right_gradient, sum_right_hessian,
@@ -360,8 +368,8 @@ void FeatureHistogram::GatherInfoForThresholdCategorical(double sum_gradient, do
   output->right_sum_gradient = sum_gradient - sum_left_gradient;
   output->right_sum_hessian = sum_right_hessian - kEpsilon;
   output->gain = current_gain - min_gain_shift;
-  output->num_cat_threshold = 1;
-  output->cat_threshold = std::vector<uint32_t>(1, threshold);
+  output->num_cat_threshold = threshold.size();
+  output->cat_threshold = threshold;
 }
 
 void FeatureHistogram::FindBestThresholdSequence(double sum_gradient, double sum_hessian, data_size_t num_data, double min_constraint, double max_constraint,

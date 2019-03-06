@@ -8,6 +8,7 @@
 
 #include <cstring>
 #include <cmath>
+#include <vector>
 
 namespace LightGBM {
 
@@ -83,7 +84,8 @@ class FeatureHistogram {
       GatherInfoForThresholdNumerical(sum_gradient, sum_hessian, threshold,
                                       num_data, false, output);
     } else {
-      GatherInfoForThresholdCategorical(sum_gradient, sum_hessian, threshold,
+      std::vector<uint32_t> thresholds(1, threshold);
+      GatherInfoForThresholdCategorical(sum_gradient, sum_hessian, thresholds,
                                         num_data, output);
     }
   }
@@ -93,7 +95,7 @@ class FeatureHistogram {
                                        bool default_left, SplitInfo *output);
 
   void GatherInfoForThresholdCategorical(double sum_gradient, double sum_hessian,
-                                         uint32_t threshold, data_size_t num_data, SplitInfo *output);
+                                         std::vector<uint32_t> threshold, data_size_t num_data, SplitInfo *output);
 
   /*!
   * \brief Binary size of this histogram
