@@ -60,8 +60,8 @@ class CategoricalSplitFunctionCallback : public CategoricalSplitCallback {
  public:
   CategoricalSplitFunctionCallback(CategoricalSplitFunction fn) : function_(fn){}
 
-  void SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split, bool* default_left, std::vector<uint32_t>* thresholds) override {
-    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split, default_left, (CategoricalSplitHandle)thresholds);
+  void SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split, std::vector<uint32_t>* thresholds) override {
+    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split, (CategoricalSplitHandle)thresholds);
   }
 
  private:

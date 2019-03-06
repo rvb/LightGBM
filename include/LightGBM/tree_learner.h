@@ -26,7 +26,7 @@ public:
 
 class CategoricalSplitCallback {
 public:
-  virtual void SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits, bool* default_left, std::vector<uint32_t>* thresholds) = 0;
+  virtual void SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits, std::vector<uint32_t>* thresholds) = 0;
 };
 
 /*!

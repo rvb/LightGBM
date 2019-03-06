@@ -538,7 +538,18 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
         smaller_split.max_constraint = smaller_leaf_splits_->max_constraint();
       }
     } else if(bin_type == BinType::CategoricalBin && categorical_split_callback_){
-      throw std::runtime_error("NOT IMPLEMENTED");
+      std::vector<uint32_t> thresholds;
+      categorical_split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index, smaller_leaf_splits_.get(), &thresholds);
+      if(thresholds.size() > 0){
+	smaller_leaf_histogram_array_[feature_index].GatherInfoForThresholdCategorical(
+	  smaller_leaf_splits_->sum_gradients(),
+	  smaller_leaf_splits_->sum_hessians(),
+	  thresholds,
+	  smaller_leaf_splits_->num_data_in_leaf(),
+	  &smaller_split);
+        smaller_split.min_constraint = smaller_leaf_splits_->min_constraint();
+        smaller_split.max_constraint = smaller_leaf_splits_->max_constraint();
+      }
     } else {
       smaller_leaf_histogram_array_[feature_index].FindBestThreshold(
         smaller_leaf_splits_->sum_gradients(),
@@ -587,7 +598,18 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
 	larger_split.max_constraint = larger_leaf_splits_->max_constraint();
       }
     } else if(bin_type == BinType::CategoricalBin && categorical_split_callback_){
-      throw std::runtime_error("NOT IMPLEMENTED");
+      std::vector<uint32_t> thresholds;
+      categorical_split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index, larger_leaf_splits_.get(), &thresholds);
+      if(thresholds.size() > 0){
+	larger_leaf_histogram_array_[feature_index].GatherInfoForThresholdCategorical(
+	  larger_leaf_splits_->sum_gradients(),
+	  larger_leaf_splits_->sum_hessians(),
+	  thresholds,
+	  larger_leaf_splits_->num_data_in_leaf(),
+	  &larger_split);
+        larger_split.min_constraint = larger_leaf_splits_->min_constraint();
+        larger_split.max_constraint = larger_leaf_splits_->max_constraint();
+      }
     } else {
     // find best threshold for larger child
       larger_leaf_histogram_array_[feature_index].FindBestThreshold(
