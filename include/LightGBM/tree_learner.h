@@ -24,6 +24,11 @@ public:
   virtual int SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits, bool* default_left) = 0;
 };
 
+class CategoricalSplitCallback {
+public:
+  virtual void SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits, bool* default_left, std::vector<uint32_t>* thresholds) = 0;
+};
+
 /*!
 * \brief Interface for tree learner
 */
@@ -86,6 +91,7 @@ class TreeLearner {
     data_size_t total_num_data, const data_size_t* bag_indices, data_size_t bag_cnt) const = 0;
 
   virtual void SetSplitCallback(SplitCallback* callback) = 0;
+  virtual void SetCategoricalSplitCallback(CategoricalSplitCallback* callback) = 0;
 
   TreeLearner() = default;
   /*! \brief Disable copy */

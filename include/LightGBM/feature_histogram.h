@@ -135,6 +135,7 @@ class FeatureHistogram {
     }
   }
 
+  BinType bin_type(){ return meta_->bin_type;}
   int num_bins(){ return meta_->num_bin;}
   int bias(){return meta_->bias;}
   data_size_t count(int bin){ return data_[bin].cnt;}

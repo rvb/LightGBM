@@ -79,6 +79,10 @@ class SerialTreeLearner: public TreeLearner {
     split_callback_.reset(callback);
   }
 
+  void SetCategoricalSplitCallback(CategoricalSplitCallback* callback) override {
+    categorical_split_callback_.reset(callback);
+  }
+
  protected:
   /*!
   * \brief Some initial works before training
@@ -183,6 +187,7 @@ class SerialTreeLearner: public TreeLearner {
   std::vector<uint32_t> feature_used_in_data;
 
   std::unique_ptr<SplitCallback> split_callback_;
+  std::unique_ptr<CategoricalSplitCallback> categorical_split_callback_;
 };
 
 inline data_size_t SerialTreeLearner::GetGlobalDataCountInLeaf(int leaf_idx) const {

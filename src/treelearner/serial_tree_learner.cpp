@@ -522,7 +522,8 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                               smaller_leaf_splits_->num_data_in_leaf(),
                               smaller_leaf_histogram_array_[feature_index].RawData());
     int real_fidx = train_data_->RealFeatureIndex(feature_index);
-    if(split_callback_){
+    auto bin_type = smaller_leaf_histogram_array_[feature_index].bin_type();
+    if(bin_type == BinType::NumericalBin && split_callback_){
       bool default_left;
       auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index, smaller_leaf_splits_.get(), &default_left);
       if(threshold >= 0){
@@ -536,6 +537,8 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
         smaller_split.min_constraint = smaller_leaf_splits_->min_constraint();
         smaller_split.max_constraint = smaller_leaf_splits_->max_constraint();
       }
+    } else if(bin_type == BinType::CategoricalBin && categorical_split_callback_){
+      throw std::runtime_error("NOT IMPLEMENTED");
     } else {
       smaller_leaf_histogram_array_[feature_index].FindBestThreshold(
         smaller_leaf_splits_->sum_gradients(),
@@ -568,7 +571,8 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                                 larger_leaf_histogram_array_[feature_index].RawData());
     }
     SplitInfo larger_split;
-    if(split_callback_){
+    bin_type = larger_leaf_histogram_array_[feature_index].bin_type();
+    if(bin_type == BinType::NumericalBin && split_callback_){
       bool default_left;
       auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index, larger_leaf_splits_.get(), &default_left);
       if(threshold >= 0){
@@ -582,6 +586,8 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
 	larger_split.min_constraint = larger_leaf_splits_->min_constraint();
 	larger_split.max_constraint = larger_leaf_splits_->max_constraint();
       }
+    } else if(bin_type == BinType::CategoricalBin && categorical_split_callback_){
+      throw std::runtime_error("NOT IMPLEMENTED");
     } else {
     // find best threshold for larger child
       larger_leaf_histogram_array_[feature_index].FindBestThreshold(

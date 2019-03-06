@@ -19,8 +19,11 @@ typedef void* BoosterHandle;
 typedef void* ConfigHandle;
 typedef void* HistogramHandle;
 typedef void* LeafSplitHandle;
+typedef void* CategoricalSplitHandle;
 
 typedef int (*SplitFunction)(ConfigHandle, HistogramHandle, LeafSplitHandle, bool*);
+
+typedef void (*CategoricalSplitFunction)(ConfigHandle, HistogramHandle, LeafSplitHandle, bool*, CategoricalSplitHandle);
 
 #define C_API_DTYPE_FLOAT32 (0)
 #define C_API_DTYPE_FLOAT64 (1)
@@ -464,6 +467,8 @@ LIGHTGBM_C_EXPORT int LGBM_BoosterResetTrainingData(BoosterHandle handle,
 LIGHTGBM_C_EXPORT int LGBM_BoosterResetParameter(BoosterHandle handle, const char* parameters);
 
 LIGHTGBM_C_EXPORT int LGBM_BoosterSetSplitFunction(BoosterHandle handle, SplitFunction callback);
+
+LIGHTGBM_C_EXPORT int LGBM_BoosterSetCategoricalSplitFunction(BoosterHandle handle, CategoricalSplitFunction callback);
 
 /*!
 * \brief Get number of class

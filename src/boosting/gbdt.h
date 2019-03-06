@@ -115,6 +115,10 @@ class GBDT : public GBDTBase {
     tree_learner_->SetSplitCallback(callback);
   }
 
+  void SetCategoricalSplitCallback(CategoricalSplitCallback* callback) override {
+    tree_learner_->SetCategoricalSplitCallback(callback);
+  }
+
   /*!
   * \brief Adding a validation dataset
   * \param valid_data Validation dataset

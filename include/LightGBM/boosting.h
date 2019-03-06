@@ -56,6 +56,7 @@ class LIGHTGBM_EXPORT Boosting {
   virtual void ResetConfig(const Config* config) = 0;
 
   virtual void SetSplitCallback(SplitCallback* callback) = 0;
+  virtual void SetCategoricalSplitCallback(CategoricalSplitCallback* callback) = 0;
 
   /*!
   * \brief Add a validation data

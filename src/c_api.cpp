@@ -56,6 +56,18 @@ class SplitFunctionCallback : public SplitCallback {
   SplitFunction function_;
 };
 
+class CategoricalSplitFunctionCallback : public CategoricalSplitCallback {
+ public:
+  CategoricalSplitFunctionCallback(CategoricalSplitFunction fn) : function_(fn){}
+
+  void SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split, bool* default_left, std::vector<uint32_t>* thresholds) override {
+    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split, default_left, (CategoricalSplitHandle)thresholds);
+  }
+
+ private:
+  CategoricalSplitFunction function_;
+};
+
 class Booster {
  public:
   explicit Booster(const char* filename) {
@@ -172,6 +184,10 @@ class Booster {
 
   void SetSplitCallback(SplitCallback* callback){
     boosting_->SetSplitCallback(callback);
+  }
+
+  void SetCategoricalSplitCallback(CategoricalSplitCallback* callback){
+    boosting_->SetCategoricalSplitCallback(callback);
   }
 
   void AddValidData(const Dataset* valid_data) {
@@ -1023,6 +1039,13 @@ int LGBM_BoosterSetSplitFunction(BoosterHandle handle, SplitFunction callback){
   API_BEGIN();
   Booster* ref_booster = reinterpret_cast<Booster*>(handle);
   ref_booster->SetSplitCallback(new SplitFunctionCallback(callback));
+  API_END();
+}
+
+int LGBM_BoosterSetCategoricalSplitFunction(BoosterHandle handle, CategoricalSplitFunction callback){
+  API_BEGIN();
+  Booster* ref_booster = reinterpret_cast<Booster*>(handle);
+  ref_booster->SetCategoricalSplitCallback(new CategoricalSplitFunctionCallback(callback));
   API_END();
 }
 
