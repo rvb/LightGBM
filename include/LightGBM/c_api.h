@@ -20,7 +20,7 @@ typedef void* ConfigHandle;
 typedef void* HistogramHandle;
 typedef void* LeafSplitHandle;
 
-typedef int (*SplitFunction)(ConfigHandle, HistogramHandle, LeafSplitHandle);
+typedef int (*SplitFunction)(ConfigHandle, HistogramHandle, LeafSplitHandle, bool*);
 
 #define C_API_DTYPE_FLOAT32 (0)
 #define C_API_DTYPE_FLOAT64 (1)

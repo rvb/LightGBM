@@ -48,8 +48,8 @@ class SplitFunctionCallback : public SplitCallback {
  public:
   SplitFunctionCallback(SplitFunction fn) : function_(fn){}
 
-  int SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split) override {
-    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split);
+  int SplitPoint(const Config* config, const FeatureHistogram* hist, const LeafSplits* leaf_split, bool* default_left) override {
+    return function_((ConfigHandle)config, (HistogramHandle)hist, (LeafSplitHandle)leaf_split, default_left);
   }
 
  private:

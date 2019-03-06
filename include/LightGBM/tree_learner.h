@@ -21,7 +21,7 @@ class ObjectiveFunction;
 
 class SplitCallback {
 public:
-  virtual int SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits) = 0;
+  virtual int SplitPoint(const Config* config, const FeatureHistogram* histogram, const LeafSplits* leaf_splits, bool* default_left) = 0;
 };
 
 /*!

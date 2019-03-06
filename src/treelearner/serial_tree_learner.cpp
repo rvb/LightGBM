@@ -523,13 +523,15 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
                               smaller_leaf_histogram_array_[feature_index].RawData());
     int real_fidx = train_data_->RealFeatureIndex(feature_index);
     if(split_callback_){
-      auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index, smaller_leaf_splits_.get());
+      bool default_left;
+      auto threshold = split_callback_->SplitPoint(config_, smaller_leaf_histogram_array_ + feature_index, smaller_leaf_splits_.get(), &default_left);
       if(threshold >= 0){
-        smaller_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
+        smaller_leaf_histogram_array_[feature_index].GatherInfoForThresholdNumerical(
 	  smaller_leaf_splits_->sum_gradients(),
 	  smaller_leaf_splits_->sum_hessians(),
 	  threshold,
 	  smaller_leaf_splits_->num_data_in_leaf(),
+	  default_left,
 	  &smaller_split);
         smaller_split.min_constraint = smaller_leaf_splits_->min_constraint();
         smaller_split.max_constraint = smaller_leaf_splits_->max_constraint();
@@ -567,13 +569,15 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
     }
     SplitInfo larger_split;
     if(split_callback_){
-      auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index, larger_leaf_splits_.get());
+      bool default_left;
+      auto threshold = split_callback_->SplitPoint(config_, larger_leaf_histogram_array_ + feature_index, larger_leaf_splits_.get(), &default_left);
       if(threshold >= 0){
-        larger_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
+        larger_leaf_histogram_array_[feature_index].GatherInfoForThresholdNumerical(
   	  larger_leaf_splits_->sum_gradients(),
 	  larger_leaf_splits_->sum_hessians(),
 	  threshold,
 	  larger_leaf_splits_->num_data_in_leaf(),
+	  default_left,
 	  &larger_split);
 	larger_split.min_constraint = larger_leaf_splits_->min_constraint();
 	larger_split.max_constraint = larger_leaf_splits_->max_constraint();

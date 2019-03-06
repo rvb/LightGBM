@@ -81,7 +81,7 @@ class FeatureHistogram {
                               uint32_t threshold, data_size_t num_data, SplitInfo *output) {
     if (meta_->bin_type == BinType::NumericalBin) {
       GatherInfoForThresholdNumerical(sum_gradient, sum_hessian, threshold,
-                                      num_data, output);
+                                      num_data, false, output);
     } else {
       GatherInfoForThresholdCategorical(sum_gradient, sum_hessian, threshold,
                                         num_data, output);
@@ -90,7 +90,7 @@ class FeatureHistogram {
 
   void GatherInfoForThresholdNumerical(double sum_gradient, double sum_hessian,
                                        uint32_t threshold, data_size_t num_data,
-                                       SplitInfo *output);
+                                       bool default_left, SplitInfo *output);
 
   void GatherInfoForThresholdCategorical(double sum_gradient, double sum_hessian,
                                          uint32_t threshold, data_size_t num_data, SplitInfo *output);

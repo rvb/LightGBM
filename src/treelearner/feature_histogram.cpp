@@ -205,7 +205,7 @@ void FeatureHistogram::FindBestThresholdCategorical(double sum_gradient, double 
 
 void FeatureHistogram::GatherInfoForThresholdNumerical(double sum_gradient, double sum_hessian,
 				     uint32_t threshold, data_size_t num_data,
-				     SplitInfo *output) {
+				     bool default_left, SplitInfo *output) {
   double gain_shift = GetLeafSplitGain(sum_gradient, sum_hessian,
 				       meta_->config->lambda_l1, meta_->config->lambda_l2,
 				       meta_->config->max_delta_step);
@@ -216,7 +216,9 @@ void FeatureHistogram::GatherInfoForThresholdNumerical(double sum_gradient, doub
 
   double sum_right_gradient = 0.0f;
   double sum_right_hessian = kEpsilon;
-  data_size_t right_count = 0;
+  data_size_t right_count = 0, left_count = 0;
+  double sum_left_gradient = 0.0;
+  double sum_left_hessian = kEpsilon;
 
   // set values
   bool use_na_as_missing = false;
@@ -227,23 +229,53 @@ void FeatureHistogram::GatherInfoForThresholdNumerical(double sum_gradient, doub
     use_na_as_missing = true;
   }
 
-  int t = meta_->num_bin - 1 - bias - use_na_as_missing;
-  const int t_end = 1 - bias;
+  if(default_left){
+    const int t_end = meta_->num_bin - 2 - bias;
+    int t = 0;
+    if (use_na_as_missing && bias == 1) {
+      sum_left_gradient = sum_gradient;
+      sum_left_hessian = sum_hessian - kEpsilon;
+      left_count = num_data;
+      for (int i = 0; i < meta_->num_bin - bias; ++i) {
+	sum_left_gradient -= data_[i].sum_gradients;
+	sum_left_hessian -= data_[i].sum_hessians;
+	left_count -= data_[i].cnt;
+      }
+      t = -1;
+    }
+    for(; t <= t_end; ++t){
+      if (static_cast<uint32_t>(t + bias) > threshold) { break; }
+      if (skip_default_bin && (t + bias) == static_cast<int>(meta_->default_bin)) { continue; }
+      if (t >= 0) {
+	sum_left_gradient += data_[t].sum_gradients;
+	sum_left_hessian += data_[t].sum_hessians;
+	left_count += data_[t].cnt;
+      }
+    }
+    sum_right_gradient = sum_gradient - sum_left_gradient;
+    sum_right_hessian = sum_hessian - sum_left_hessian;
+    right_count = num_data - left_count;
+  } else {
+    int t = meta_->num_bin - 1 - bias - use_na_as_missing;
+    const int t_end = 1 - bias;
 
-  // from right to left, and we don't need data in bin0
-  for (; t >= t_end; --t) {
-    if (static_cast<uint32_t>(t + bias) < threshold) { break; }
+    // from right to left, and we don't need data in bin0
+    for (; t >= t_end; --t) {
+      if (static_cast<uint32_t>(t + bias) < threshold) { break; }
 
-    // need to skip default bin
-    if (skip_default_bin && (t + bias) == static_cast<int>(meta_->default_bin)) { continue; }
+      // need to skip default bin
+      if (skip_default_bin && (t + bias) == static_cast<int>(meta_->default_bin)) { continue; }
 
-    sum_right_gradient += data_[t].sum_gradients;
-    sum_right_hessian += data_[t].sum_hessians;
-    right_count += data_[t].cnt;
+      sum_right_gradient += data_[t].sum_gradients;
+      sum_right_hessian += data_[t].sum_hessians;
+      right_count += data_[t].cnt;
+      std::cout << "DEBUG: " << t << " g " << sum_right_gradient << " h " << sum_right_hessian << std::endl;
+    }
+    sum_left_gradient = sum_gradient - sum_right_gradient;
+    sum_left_hessian = sum_hessian - sum_right_hessian;
+    left_count = num_data - right_count;
   }
-  double sum_left_gradient = sum_gradient - sum_right_gradient;
-  double sum_left_hessian = sum_hessian - sum_right_hessian;
-  data_size_t left_count = num_data - right_count;
+
   double current_gain = GetLeafSplitGain(sum_left_gradient, sum_left_hessian,
 					 meta_->config->lambda_l1, meta_->config->lambda_l2,
 					 meta_->config->max_delta_step)
@@ -275,7 +307,7 @@ void FeatureHistogram::GatherInfoForThresholdNumerical(double sum_gradient, doub
   output->right_sum_hessian = sum_hessian - sum_left_hessian - kEpsilon;
   output->gain = current_gain;
   output->gain -= min_gain_shift;
-  output->default_left = true;
+  output->default_left = default_left;
 }
 
 void FeatureHistogram::GatherInfoForThresholdCategorical(double sum_gradient, double sum_hessian,
