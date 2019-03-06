@@ -33,6 +33,7 @@ def _load_lib():
 
 _LIB = _load_lib()
 
+NUMERICAL_SPLIT_FUN = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_double))
 
 def _safe_call(ret):
     """Check the return value from C API call.
@@ -1592,7 +1593,6 @@ class Dataset(object):
             self.construct().handle,
             c_str(fname)))
 
-
 class Booster(object):
     """Booster in LightGBM."""
 
@@ -1618,6 +1618,8 @@ class Booster(object):
         self.__set_objective_to_none = False
         self.best_iteration = -1
         self.best_score = {}
+        self.split_callback = None
+        self.categorical_callback = None
         params = {} if params is None else copy.deepcopy(params)
         # user can set verbose with params, it has higher priority
         if not any(verbose_alias in params for verbose_alias in ('verbose', 'verbosity')) and silent:
@@ -2567,3 +2569,24 @@ class Booster(object):
             else:
                 self.__attr.pop(key, None)
         return self
+
+    def set_split_callback(self, callback):
+        def wrapper(config, hist, leaf, left_p):
+            (left, threshold) = callback(Config(config), Histogram(hist), LeafSplit(leaf))
+            left_p.value = left
+            return threshold
+
+        self.split_callback = NUMERICAL_SPLIT_FUN(wrapper)
+        _safe_call(_LIB.LGBM_BoosterSetSplitFunction(self.handle, self.split_callback))
+
+class Config(object):
+    def __init__(self, handle):
+        self.handle = handle
+
+class Histogram(object):
+    def __init__(self, handle):
+        self.handle = handle
+
+class LeafSplit(object):
+    def __init__(self, handle):
+        self.handle = handle
