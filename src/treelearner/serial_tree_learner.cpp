@@ -527,7 +527,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
       if(threshold >= 0){
         smaller_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
 	  smaller_leaf_splits_->sum_gradients(),
-	  smaller_leaf_splits_->sum_gradients(),
+	  smaller_leaf_splits_->sum_hessians(),
 	  threshold,
 	  smaller_leaf_splits_->num_data_in_leaf(),
 	  &smaller_split);
@@ -571,7 +571,7 @@ void SerialTreeLearner::FindBestSplitsFromHistograms(const std::vector<int8_t>& 
       if(threshold >= 0){
         larger_leaf_histogram_array_[feature_index].GatherInfoForThreshold(
   	  larger_leaf_splits_->sum_gradients(),
-	  larger_leaf_splits_->sum_gradients(),
+	  larger_leaf_splits_->sum_hessians(),
 	  threshold,
 	  larger_leaf_splits_->num_data_in_leaf(),
 	  &larger_split);
