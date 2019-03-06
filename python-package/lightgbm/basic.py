@@ -31,6 +31,16 @@ def _load_lib():
     lib.LGBM_ConfigLambdaL1.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigLambdaL2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigMaxDeltaStep.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_LeafSplitNumData.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
+    lib.LGBM_LeafSplitSumGradients.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_LeafSplitSumHessians.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_LeafSplitMinConstraint.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_LeafSplitMaxConstraint.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_HistogramNumBins.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+    lib.LGBM_HistogramBias.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+    lib.LGBM_HistogramCount.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
+    lib.LGBM_HistogramSumGradients.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_HistogramSumHessians.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
     return lib
 
 
@@ -2605,6 +2615,56 @@ class Histogram(object):
     def __init__(self, handle):
         self.handle = handle
 
+    def num_bins(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_HistogramNumBins(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def bias(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_HistogramBias(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def count(self, bin_idx):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_HistogramCount(self.handle, bin_idx, ctypes.byref(val)))
+        return val.value
+
+    def sum_gradient(self, bin_idx):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_HistogramSumGradients(self.handle, bin_idx, ctypes.byref(val)))
+        return val.value
+
+    def sum_hessian(self, bin_idx):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_HistogramSumHessians(self.handle, bin_idx, ctypes.byref(val)))
+        return val.value
+
 class LeafSplit(object):
     def __init__(self, handle):
         self.handle = handle
+
+    def num_data(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_LeafSplitNumData(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def sum_gradients(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_LeafSplitSumGradients(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def sum_hessians(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_LeafSplitSumHessians(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def min_constraint(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_LeafSplitMinConstraint(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def max_constraint(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_LeafSplitMaxConstraint(self.handle, ctypes.byref(val)))
+        return val.value
