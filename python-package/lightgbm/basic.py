@@ -41,12 +41,13 @@ def _load_lib():
     lib.LGBM_HistogramCount.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
     lib.LGBM_HistogramSumGradients.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_HistogramSumHessians.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_SplitGain.argtypes = [ctypes.c_double]*9 + [ctypes.c_int8, ctypes.POINTER(ctypes.c_double)]
     return lib
 
 
 _LIB = _load_lib()
 
-NUMERICAL_SPLIT_FUN = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_double))
+NUMERICAL_SPLIT_FUN = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool))
 
 def _safe_call(ret):
     """Check the return value from C API call.
@@ -2586,7 +2587,7 @@ class Booster(object):
     def set_split_callback(self, callback):
         def wrapper(config, hist, leaf, left_p):
             (left, threshold) = callback(Config(config), Histogram(hist), LeafSplit(leaf))
-            left_p.value = left
+            left_p[0] = ctypes.c_bool(left)
             return threshold
 
         self.split_callback = NUMERICAL_SPLIT_FUN(wrapper)
@@ -2668,3 +2669,8 @@ class LeafSplit(object):
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitMaxConstraint(self.handle, ctypes.byref(val)))
         return val.value
+
+def split_gain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone):
+    gain = ctypes.c_double()
+    _safe_call(_LIB.LGBM_SplitGain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone, ctypes.byref(gain)))
+    return gain.value
