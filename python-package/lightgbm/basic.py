@@ -28,6 +28,9 @@ def _load_lib():
         return None
     lib = ctypes.cdll.LoadLibrary(lib_path[0])
     lib.LGBM_GetLastError.restype = ctypes.c_char_p
+    lib.LGBM_ConfigLambdaL1.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_ConfigLambdaL2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_ConfigMaxDeltaStep.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     return lib
 
 
@@ -2582,6 +2585,21 @@ class Booster(object):
 class Config(object):
     def __init__(self, handle):
         self.handle = handle
+
+    def lambda_l1(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_ConfigLambdaL1(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def lambda_l2(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_ConfigLambdaL2(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def max_delta_step(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_ConfigMaxDeltaStep(self.handle, ctypes.byref(val)))
+        return val.value
 
 class Histogram(object):
     def __init__(self, handle):
