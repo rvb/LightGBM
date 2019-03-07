@@ -31,6 +31,11 @@ def _load_lib():
     lib.LGBM_ConfigLambdaL1.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigLambdaL2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigMaxDeltaStep.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_ConfigCatSmooth.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_ConfigCatL2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_ConfigMaxCatThreshold.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+    lib.LGBM_ConfigMinDataPerGroup.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
+    lib.LGBM_ConfigMinDataInLeaf.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int)]
     lib.LGBM_LeafSplitNumData.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int32)]
     lib.LGBM_LeafSplitSumGradients.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_LeafSplitSumHessians.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
@@ -2610,6 +2615,31 @@ class Config(object):
     def max_delta_step(self):
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigMaxDeltaStep(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def cat_smooth(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_ConfigCatSmooth(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def cat_l2(self):
+        val = ctypes.c_double()
+        _safe_call(_LIB.LGBM_ConfigCatL2(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def max_cat_threshold(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_ConfigMaxCatThreshold(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def min_data_per_group(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_ConfigMinDataPerGroup(self.handle, ctypes.byref(val)))
+        return val.value
+
+    def min_data_in_leaf(self):
+        val = ctypes.c_int()
+        _safe_call(_LIB.LGBM_ConfigMinDataInLeaf(self.handle, ctypes.byref(val)))
         return val.value
 
 class Histogram(object):

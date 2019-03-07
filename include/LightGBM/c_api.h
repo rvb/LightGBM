@@ -878,6 +878,11 @@ LIGHTGBM_C_EXPORT int LGBM_SplitGain(double left_gradients, double left_hessians
 LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL1(ConfigHandle handle, double* out);
 LIGHTGBM_C_EXPORT int LGBM_ConfigLambdaL2(ConfigHandle handle, double* out);
 LIGHTGBM_C_EXPORT int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigCatSmooth(ConfigHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigCatL2(ConfigHandle handle, double* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigMaxCatThreshold(ConfigHandle handle, int* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigMinDataPerGroup(ConfigHandle handle, int* out);
+LIGHTGBM_C_EXPORT int LGBM_ConfigMinDataInLeaf(ConfigHandle handle, int* out);
 
 LIGHTGBM_C_EXPORT int LGBM_LeafSplitNumData(LeafSplitHandle handle, int32_t* out);
 LIGHTGBM_C_EXPORT int LGBM_LeafSplitSumGradients(LeafSplitHandle handle, double* out);

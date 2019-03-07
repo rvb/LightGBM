@@ -1499,6 +1499,41 @@ int LGBM_ConfigMaxDeltaStep(ConfigHandle handle, double* out){
   API_END();
 }
 
+int LGBM_ConfigCatSmooth(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->cat_smooth;
+  API_END();
+}
+
+int LGBM_ConfigCatL2(ConfigHandle handle, double* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->cat_l2;
+  API_END();
+}
+
+int LGBM_ConfigMaxCatThreshold(ConfigHandle handle, int* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->max_cat_threshold;
+  API_END();
+}
+
+int LGBM_ConfigMinDataPerGroup(ConfigHandle handle, int* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->min_data_per_group;
+  API_END();
+}
+
+int LGBM_ConfigMinDataInLeaf(ConfigHandle handle, int* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<const Config*>(handle);
+  *out = ptr->min_data_in_leaf;
+  API_END();
+}
+
 int LGBM_LeafSplitNumData(LeafSplitHandle handle, int32_t* out){
   API_BEGIN();
   auto ptr = reinterpret_cast<const LeafSplits*>(handle);
