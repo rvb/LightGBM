@@ -53,6 +53,7 @@ def _load_lib():
 _LIB = _load_lib()
 
 NUMERICAL_SPLIT_FUN = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.POINTER(ctypes.c_bool))
+CATEGORICAL_SPLIT_FUN = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p)
 
 def _safe_call(ret):
     """Check the return value from C API call.
@@ -2598,6 +2599,13 @@ class Booster(object):
         self.split_callback = NUMERICAL_SPLIT_FUN(wrapper)
         _safe_call(_LIB.LGBM_BoosterSetSplitFunction(self.handle, self.split_callback))
 
+    def set_categorical_split_callback(self, callback):
+        def wrapper(config, hist, leaf, cats):
+            callback(Config(config), Histogram(hist), LeafSplit(leaf), CategoricalSplit(cats))
+
+        self.categorical_callback = CATEGORICAL_SPLIT_FUN(wrapper)
+        _safe_call(_LIB.LGBM_BoosterSetCategoricalSplitFunction(self.handle, self.categorical_callback))
+
 class Config(object):
     def __init__(self, handle):
         self.handle = handle
@@ -2699,6 +2707,10 @@ class LeafSplit(object):
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitMaxConstraint(self.handle, ctypes.byref(val)))
         return val.value
+
+class CategoricalSplit(object):
+    def __init__(self, handle):
+        self.handle = handle
 
 def split_gain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone):
     gain = ctypes.c_double()
