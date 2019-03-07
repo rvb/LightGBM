@@ -28,6 +28,7 @@ def _load_lib():
         return None
     lib = ctypes.cdll.LoadLibrary(lib_path[0])
     lib.LGBM_GetLastError.restype = ctypes.c_char_p
+    lib.LGBM_CategoricalSplitAdd.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
     lib.LGBM_ConfigLambdaL1.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigLambdaL2.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_ConfigMaxDeltaStep.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double)]
@@ -2711,6 +2712,9 @@ class LeafSplit(object):
 class CategoricalSplit(object):
     def __init__(self, handle):
         self.handle = handle
+
+    def add(self, value):
+        _safe_call(_LIB.LGBM_CategoricalSplitAdd(self.handle, value))
 
 def split_gain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone):
     gain = ctypes.c_double()
