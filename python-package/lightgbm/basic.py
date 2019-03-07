@@ -2593,6 +2593,13 @@ class Booster(object):
         return self
 
     def set_split_callback(self, callback):
+        """Set splitting function for the Booster.
+
+        Parameters
+        ----------
+        callback
+            The function to call to split numerical features
+        """
         def wrapper(config, hist, leaf, left_p):
             (left, threshold) = callback(Config(config), Histogram(hist), LeafSplit(leaf))
             left_p[0] = ctypes.c_bool(left)
@@ -2602,6 +2609,13 @@ class Booster(object):
         _safe_call(_LIB.LGBM_BoosterSetSplitFunction(self.handle, self.split_callback))
 
     def set_categorical_split_callback(self, callback):
+        """Set categorical splitting function for the Booster.
+
+        Parameters
+        ----------
+        callback
+            The function to call to split categorical features
+        """
         def wrapper(config, hist, leaf, cats):
             callback(Config(config), Histogram(hist), LeafSplit(leaf), CategoricalSplit(cats))
 
@@ -2613,41 +2627,97 @@ class Config(object):
         self.handle = handle
 
     def lambda_l1(self):
+        """Get lambda_l1 parameter from the Config.
+
+        Returns
+        -------
+        val : double
+            The value of the lambda_l1 parameter
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigLambdaL1(self.handle, ctypes.byref(val)))
         return val.value
 
     def lambda_l2(self):
+        """Get lambda_l2 parameter from the Config.
+
+        Returns
+        -------
+        val : double
+            The value of the lambda_l2 parameter
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigLambdaL2(self.handle, ctypes.byref(val)))
         return val.value
 
     def max_delta_step(self):
+        """Get max_delta_step parameter from the Config.
+
+        Returns
+        -------
+        val : double
+            The value of the max_delta_step parameter
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigMaxDeltaStep(self.handle, ctypes.byref(val)))
         return val.value
 
     def cat_smooth(self):
+        """Get cat_smooth parameter from the Config.
+
+        Returns
+        -------
+        val : double
+            The value of the cat_smooth parameter
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigCatSmooth(self.handle, ctypes.byref(val)))
         return val.value
 
     def cat_l2(self):
+        """Get cat_l2 parameter from the Config.
+
+        Returns
+        -------
+        val : double
+            The value of the cat_l2 parameter
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_ConfigCatL2(self.handle, ctypes.byref(val)))
         return val.value
 
     def max_cat_threshold(self):
+        """Get max_cat_threshold parameter from the Config.
+
+        Returns
+        -------
+        val : int
+            The value of the max_cat_threshold parameter
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_ConfigMaxCatThreshold(self.handle, ctypes.byref(val)))
         return val.value
 
     def min_data_per_group(self):
+        """Get min_data_per_group parameter from the Config.
+
+        Returns
+        -------
+        val : int
+            The value of the min_data_per_group parameter
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_ConfigMinDataPerGroup(self.handle, ctypes.byref(val)))
         return val.value
 
     def min_data_in_leaf(self):
+        """Get min_data_in_leaf parameter from the Config.
+
+        Returns
+        -------
+        val : int
+            The value of the min_data_in_leaf parameter
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_ConfigMinDataInLeaf(self.handle, ctypes.byref(val)))
         return val.value
@@ -2657,31 +2727,88 @@ class Histogram(object):
         self.handle = handle
 
     def num_bins(self):
+        """Get the number of bins in the Histogram
+
+        Returns
+        -------
+        val : int
+            The number of bins in the Histogram.
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_HistogramNumBins(self.handle, ctypes.byref(val)))
         return val.value
 
     def bias(self):
+        """Get the bias of the Histogram
+
+        Returns
+        -------
+        val : int
+            The bias of the Histogram.
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_HistogramBias(self.handle, ctypes.byref(val)))
         return val.value
 
     def count(self, bin_idx):
+        """Get the number of data points in bin_idx in the Histogram
+
+        Parameters
+        ----------
+        bin_idx : int
+            The index of the bin
+
+        Returns
+        -------
+        val : int
+            The number of data points in bin bin_idx.
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_HistogramCount(self.handle, bin_idx, ctypes.byref(val)))
         return val.value
 
     def sum_gradient(self, bin_idx):
+        """Get the total gradient in bin_idx in the Histogram
+
+        Parameters
+        ----------
+        bin_idx : int
+            The index of the bin
+
+        Returns
+        -------
+        val : double
+            The total gradient in bin bin_idx.
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_HistogramSumGradients(self.handle, bin_idx, ctypes.byref(val)))
         return val.value
 
     def sum_hessian(self, bin_idx):
+        """Get the total hessian in bin_idx in the Histogram
+
+        Parameters
+        ----------
+        bin_idx : int
+            The index of the bin
+
+        Returns
+        -------
+        val : double
+            The total hessian in bin bin_idx.
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_HistogramSumHessians(self.handle, bin_idx, ctypes.byref(val)))
         return val.value
 
     def monotone_constraint(self):
+        """Get the monotone constraint of the Histogram's feature
+
+        Returns
+        -------
+        val : int
+            The monotone constraint of the Histogram's feature.
+        """
         val = ctypes.c_int8()
         _safe_call(_LIB.LGBM_HistogramMonotoneConstraint(self.handle, ctypes.byref(val)))
         return val.value
@@ -2691,26 +2818,61 @@ class LeafSplit(object):
         self.handle = handle
 
     def num_data(self):
+        """Get the number of data points in the LeafSplit
+
+        Returns
+        -------
+        val : int
+            The number of data points in the LeafSplit
+        """
         val = ctypes.c_int()
         _safe_call(_LIB.LGBM_LeafSplitNumData(self.handle, ctypes.byref(val)))
         return val.value
 
     def sum_gradients(self):
+        """Get the total gradient in the LeafSplit
+
+        Returns
+        -------
+        val : double
+            The total gradient in the LeafSplit
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitSumGradients(self.handle, ctypes.byref(val)))
         return val.value
 
     def sum_hessians(self):
+        """Get the total hessian in the LeafSplit
+
+        Returns
+        -------
+        val : double
+            The total hessian in the LeafSplit
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitSumHessians(self.handle, ctypes.byref(val)))
         return val.value
 
     def min_constraint(self):
+        """Get the minimum constraint of the LeafSplit
+
+        Returns
+        -------
+        val : double
+            The minimum constant of the LeafSplit
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitMinConstraint(self.handle, ctypes.byref(val)))
         return val.value
 
     def max_constraint(self):
+        """Get the maximum constraint of the LeafSplit
+
+        Returns
+        -------
+        val : double
+            The maximum constant of the LeafSplit
+        """
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_LeafSplitMaxConstraint(self.handle, ctypes.byref(val)))
         return val.value
@@ -2720,9 +2882,48 @@ class CategoricalSplit(object):
         self.handle = handle
 
     def add(self, value):
+        """Add value to this categorical split
+
+        Parameters
+        ----------
+        value : int
+            The bin to add
+        """
         _safe_call(_LIB.LGBM_CategoricalSplitAdd(self.handle, value))
 
 def split_gain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone):
+    """Compute the gain of splitting a node
+
+    Parameters
+    ----------
+    left_g : double
+        The total gradient on the left-hand side of the split
+    left_h : double
+        The total hessian on the left-hand side of the split
+    right_g : double
+        The total gradient on the right-hand side of the split
+    right_h : double
+        The total hessian on the right-hand side of the split
+    l1 : double
+        The L1 penalty to use
+    l2 : double
+        The L2 penalty to use
+    max_delta_step : double
+        The upper limit on the step to use
+    min_c : double
+        The min constraint for the leaf node being split
+    max_c : double
+        The max constraint for the leaf node being split
+    monotone : int
+        If 1, the left-hand side must have a greater output than the right-hand side.
+        If -1, the left-hand side mus have a smaller output than the right-hand side.
+        Otherwise, no constraint applies.
+
+    Returns
+    -------
+    gain : double
+        The gain of this split
+    """
     gain = ctypes.c_double()
     _safe_call(_LIB.LGBM_SplitGain(left_g, left_h, right_g, right_h, l1, l2, max_delta, min_c, max_c, monotone, ctypes.byref(gain)))
     return gain.value

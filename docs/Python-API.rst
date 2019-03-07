@@ -67,3 +67,28 @@ Plotting
 .. autofunction:: lightgbm.plot_tree
 
 .. autofunction:: lightgbm.create_tree_digraph
+
+APIs for splitting callbacks
+----------------------------
+
+.. autoclass:: lightgbm.Config
+    :members:
+    :inherited-members:
+    :show-inheritance:
+
+.. autoclass:: lightgbm.Histogram
+    :members:
+    :inherited-members:
+    :show-inheritance:
+
+.. autoclass:: lightgbm.LeafSplit
+    :members:
+    :inherited-members:
+    :show-inheritance:
+
+.. autoclass:: lightgbm.CategoricalSplit
+    :members:
+    :inherited-members:
+    :show-inheritance:
+
+.. autofunction:: lightgbm.split_gain
