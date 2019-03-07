@@ -141,6 +141,7 @@ class FeatureHistogram {
   data_size_t count(int bin){ return data_[bin].cnt;}
   double sum_gradients(int bin){ return data_[bin].sum_gradients;}
   double sum_hessians(int bin){ return data_[bin].sum_hessians;}
+  int8_t monotone_constraint(){ return meta_->monotone_type;}
 
   static double GetSplitGains(double sum_left_gradients, double sum_left_hessians,
                               double sum_right_gradients, double sum_right_hessians,

@@ -1462,6 +1462,13 @@ int LGBM_HistogramSumHessians(HistogramHandle handle, int bin, double* out){
   API_END();
 }
 
+int LGBM_HistogramMonotoneConstraint(HistogramHandle handle, int8_t* out){
+  API_BEGIN();
+  auto ptr = reinterpret_cast<FeatureHistogram*>(handle);
+  *out = ptr->monotone_constraint();
+  API_END();
+}
+
 int LGBM_SplitGain(double left_gradients, double left_hessians, double right_gradients, double right_hessians, double l1, double l2, double max_delta_step, double min_constraint, double max_constraint, int8_t monotone_constraint, double* out){
   API_BEGIN();
   *out = FeatureHistogram::GetSplitGains(

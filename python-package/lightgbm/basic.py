@@ -47,6 +47,7 @@ def _load_lib():
     lib.LGBM_HistogramCount.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_int)]
     lib.LGBM_HistogramSumGradients.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
     lib.LGBM_HistogramSumHessians.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.POINTER(ctypes.c_double)]
+    lib.LGBM_HistogramMonotoneConstraint.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_int8)]
     lib.LGBM_SplitGain.argtypes = [ctypes.c_double]*9 + [ctypes.c_int8, ctypes.POINTER(ctypes.c_double)]
     return lib
 
@@ -2678,6 +2679,11 @@ class Histogram(object):
     def sum_hessian(self, bin_idx):
         val = ctypes.c_double()
         _safe_call(_LIB.LGBM_HistogramSumHessians(self.handle, bin_idx, ctypes.byref(val)))
+        return val.value
+
+    def monotone_constraint(self):
+        val = ctypes.c_int8()
+        _safe_call(_LIB.LGBM_HistogramMonotoneConstraint(self.handle, ctypes.byref(val)))
         return val.value
 
 class LeafSplit(object):
