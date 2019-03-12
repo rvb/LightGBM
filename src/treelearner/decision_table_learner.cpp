@@ -112,7 +112,7 @@ void DecisionTableLearner::ResetConfig(const Config* config) {
   }
 }
 
-void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians, int leaf_idx){
+void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feature_used, const score_t* gradients, const score_t* hessians, int leaf_idx){
   FeatureHistogram* histogram_array;
   histogram_pool_.Get(leaf_idx,&histogram_array);
   HistogramBinEntry* ptr_leaf_hist_data = histogram_array[0].RawData() - 1;
@@ -134,7 +134,7 @@ void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feat
 
 void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
   for(int i = 0; i < num_leaves; ++i){
-    ConstructHistogram(is_feature_used, num_leaves, gradients, hessians, i);
+    ConstructHistogram(is_feature_used, gradients, hessians, i);
   }
 }
 
