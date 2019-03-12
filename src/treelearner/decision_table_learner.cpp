@@ -905,13 +905,13 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   //Puts all data in the leaf.
   data_partition_->Init();
   leaf_splits_[0]->Init(0, data_partition_.get(), gradients, hessians);
+  InitOrderedBin();  
   int32_t cur_depth = 1;
   if (!forced_split_json.is_null()) {
     ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
   }
   std::vector<int8_t> is_feature_used(train_data_->num_features());
   SampleFeatures(is_feature_used);
-  InitOrderedBin();
   for(int i = cur_depth - 1; i < tree_depth_ - 1; ++i){
     ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
     auto split = FindBestSplit(is_feature_used, tree->num_leaves(), gradients, hessians);
