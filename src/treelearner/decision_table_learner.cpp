@@ -123,6 +123,14 @@ void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_fea
     				     ordered_bins_, gradients, hessians,
     				     ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
     				     ptr_leaf_hist_data);
+    for(int feature_idx = 0; feature_idx < is_feature_used.size(); ++feature_idx){
+      if(is_feature_used[feature_idx]){
+	train_data_->FixHistogram(feature_idx,
+				  leaf_splits_[i]->sum_gradients(), leaf_splits_[i]->sum_hessians(),
+				  leaf_splits_[i]->num_data_in_leaf(),
+				  histogram_array[feature_idx].RawData());	
+      }
+    }
   }
 }
 
@@ -725,12 +733,6 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
       }
       additional_cost_per_node *= config_->cegb_tradeoff;
       for(int leaf_idx = 0; leaf_idx < num_leaves; ++leaf_idx){
-	//Step 0: Fix histogram (TODO: This is a copy-pasta from the tree learner)
-	//TODO: I vaguely recall this being related to feature bundling, is that the case???
-	train_data_->FixHistogram(feature_idx,
-				  leaf_splits_[leaf_idx]->sum_gradients(), leaf_splits_[leaf_idx]->sum_hessians(),
-				  leaf_splits_[leaf_idx]->num_data_in_leaf(),
-				  histogram_arrs[leaf_idx][feature_idx].RawData());
 	//Step 1: Compute minimum gain to overcome.
 	gain_shifts[leaf_idx] =
 	  histogram_arrs[leaf_idx][feature_idx].GetLeafSplitGain(leaf_splits_[leaf_idx]->sum_gradients(),
