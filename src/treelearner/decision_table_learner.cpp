@@ -112,25 +112,29 @@ void DecisionTableLearner::ResetConfig(const Config* config) {
   }
 }
 
+void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians, int leaf_idx){
+  FeatureHistogram* histogram_array;
+  histogram_pool_.Get(leaf_idx,&histogram_array);
+  HistogramBinEntry* ptr_leaf_hist_data = histogram_array[0].RawData() - 1;
+  train_data_->ConstructHistograms(is_feature_used,
+				   leaf_splits_[leaf_idx]->data_indices(), leaf_splits_[leaf_idx]->num_data_in_leaf(),
+				   leaf_splits_[leaf_idx]->LeafIndex(),
+				   ordered_bins_, gradients, hessians,
+				   ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
+				   ptr_leaf_hist_data);
+  for(int feature_idx = 0; feature_idx < is_feature_used.size(); ++feature_idx){
+    if(is_feature_used[feature_idx]){
+      train_data_->FixHistogram(feature_idx,
+				leaf_splits_[leaf_idx]->sum_gradients(), leaf_splits_[leaf_idx]->sum_hessians(),
+				leaf_splits_[leaf_idx]->num_data_in_leaf(),
+				histogram_array[feature_idx].RawData());	
+    }
+  }
+}
+
 void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
   for(int i = 0; i < num_leaves; ++i){
-    FeatureHistogram* histogram_array;
-    histogram_pool_.Get(i,&histogram_array);
-    HistogramBinEntry* ptr_leaf_hist_data = histogram_array[0].RawData() - 1;
-    train_data_->ConstructHistograms(is_feature_used,
-    				     leaf_splits_[i]->data_indices(), leaf_splits_[i]->num_data_in_leaf(),
-    				     leaf_splits_[i]->LeafIndex(),
-    				     ordered_bins_, gradients, hessians,
-    				     ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
-    				     ptr_leaf_hist_data);
-    for(int feature_idx = 0; feature_idx < is_feature_used.size(); ++feature_idx){
-      if(is_feature_used[feature_idx]){
-	train_data_->FixHistogram(feature_idx,
-				  leaf_splits_[i]->sum_gradients(), leaf_splits_[i]->sum_hessians(),
-				  leaf_splits_[i]->num_data_in_leaf(),
-				  histogram_array[feature_idx].RawData());	
-      }
-    }
+    ConstructHistogram(is_feature_used, num_leaves, gradients, hessians, i);
   }
 }
 
