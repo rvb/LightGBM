@@ -26,6 +26,17 @@ DecisionTableLearner::DecisionTableLearner(const Config* config){
 DecisionTableLearner::~DecisionTableLearner() {
 }
 
+/*
+  Initialise the tree learner for learning on train_data.
+  Postconditions:
+  - data_partition_ is initialised with num_data matching the data set size, num_leaves matching the largest possible tree given current config
+  - histogram_pool_ is initialised to contain a number of histograms equal to the maximum number of leaves in a tree
+  - leaf_splits_ is resized to the same size as the maximum number of leaves, and each leaf split is initialised
+  - ordered_bin is initialised given the data set's sparse features
+  - ordered_bin_indices is set to the indices of features that have ordered bins (i.e. are sparse)
+  - is_data_in_leaf_ is a num_data_-sized vector of zeroes
+  - ordered_gradients/hessians are size(num_data_)
+*/
 void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hessian) {
   train_data_ = train_data;
   num_data_ = train_data_->num_data();
@@ -69,6 +80,21 @@ void DecisionTableLearner::Init(const Dataset* train_data, bool is_constant_hess
   valid_feature_indices_ = train_data_->ValidFeatureIndices();
 }
 
+/*
+  Resets tree learner to maintain invariants despite change of training data.
+
+  Preconditions:
+  - leaf_splits_ is size num-leaves (1 << tree_depth_) and each element has been Inited
+  - data partition_ has been created with correct number of leaves
+  - has_ordered_bin_ has been set correctly (This requires the data set to have the same features as the one Init was called with)
+
+  Postconditions:
+  - ordered_bins_ are recreated
+  - leaf_splits_ have correct number of data points for train_data
+  - data_partition_ is resized
+  - ordered_gradients_/hessians_ resized
+  - is_data_in_leaf_ is a num_data_-sized vector of zeros
+*/
 void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
   train_data_ = train_data;
   num_data_ = train_data_->num_data();
@@ -91,6 +117,14 @@ void DecisionTableLearner::ResetTrainingData(const Dataset* train_data) {
   }
 }
 
+/*
+  Resets tree learner to maintain invariants despite config changes.
+  Postconditions:
+  - histogram_pool_ is resized to ensure it matches the maximum number of leaves
+  - data_partition_ is resized
+  - leaf_splits is resized and re-initialised
+  - tree_depth_ is updated
+*/
 void DecisionTableLearner::ResetConfig(const Config* config) {
   config_ = config;
   int new_depth;
@@ -112,6 +146,15 @@ void DecisionTableLearner::ResetConfig(const Config* config) {
   }
 }
 
+/*
+  Compute the histogram for leaf_idx.
+  Preconditions:
+  - leaf_splits_[leaf_idx] is Init()ed with correct indices, gradients and hessians
+  - histogram_pool_ is large enough to contain leaf_idx
+  - ordered_bins_ are up to date with all splits performed so far
+  Postconditions:
+  - Histogram pool entry for leaf_idx contains the computed histogram
+*/
 void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feature_used, const score_t* gradients, const score_t* hessians, int leaf_idx){
   FeatureHistogram* histogram_array;
   histogram_pool_.Get(leaf_idx,&histogram_array);
@@ -132,6 +175,17 @@ void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feat
   }
 }
 
+/*
+  Find the best threshold to split a numerical feature, splitting in one direction only.
+  Due to default/NA bins, this may need to be called twice, with dir == 1/-1 (see FindBestThresholdNumerical)
+
+  Preconditions:
+  - histogram_arrs[i] contains a computed histogram for leaf i, for all leaves up to num_leaves
+  - leaf_splits_[i] is Init()ed for each i up to num_leaves
+
+  Postconditions:
+  - output contains the best splits and gains for each leaf, provided they were better than output.gain in the input
+ */
 void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx, FeatureSplits& output, const int dir, const bool skip_default_bin, const bool use_na_as_missing){
   std::vector<HistogramBinEntry*> leaf_histograms(num_leaves);
   bool is_splittable = false;
@@ -351,6 +405,15 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
   }
 }
 
+/*
+  Find the best split for a numerical feature.
+
+  Preconditions:
+  The same as for FindBestFeatureSplitSequence.
+
+  Postconditions:
+  Output contains the best split point for this numerical feature.
+*/
 FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   auto num_bin = train_data_->FeatureNumBin(feature_idx);
   auto missing_type = train_data_->FeatureBinMapper(feature_idx)->missing_type();
@@ -375,6 +438,15 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
   return output;
 }
 
+/*
+  Find the best split point for a categorical feature.
+
+  Preconditions:
+  The same as for FindBestFeatureSplitSequence.
+
+  Postconditions:
+  Output contains the best split for this categorical feature.
+*/
 FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   FeatureSplits output(num_leaves);
   auto bin_mapper = train_data_->FeatureBinMapper(feature_idx);
@@ -699,6 +771,16 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
   return output;
 }
 
+/*
+  Find the best way to split feature feature_idx.
+
+  Preconditions:
+  - All leaf_splits_ up to num_leaves have been Init()ed
+  - All histograms in histogram_arrs have been constructed and FixHistogram has been called on them where needed
+
+  Postconditions:
+  Returns the best way to split this feature
+*/
 FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   FeatureSplits output(num_leaves);
   if(train_data_->FeatureBinMapper(feature_idx)->bin_type() == BinType::NumericalBin){
@@ -715,6 +797,13 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, c
   return output;
 }
 
+/*
+  Finds the best split across all features
+
+  Preconditions:
+  - Same as for FindBestFeatureSplit
+  - feature_used is the same size as num_features, and is true if and only if the feature has been used somewhere in the current forest
+*/
 FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_feature_used, const int num_leaves){
   FeatureSplits ret(num_leaves);
   std::vector<FeatureHistogram*> histogram_arrs(num_leaves);
@@ -755,6 +844,20 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   return ret;
 }
 
+/*
+  Split the current tree by split.
+
+  Preconditions:
+  - All leaf histograms for pre-split leaves are constructed
+  - All leaf splits for pre-split leaves are Init()ed
+  - data_partition_ accurately reflects pre-split tree
+  - ordered_bins_ accurately reflect the pre-split tree
+
+  Postconditions:
+  - data_partition_ reflects post-split tree
+  - All leaf histograms and splits are split
+  - ordered_bins_ is split appropriately
+*/
 void DecisionTableLearner::Split(const std::vector<int8_t>& is_feature_used, Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians){
   const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
   feature_used_[inner_feature_index] = true;
@@ -806,6 +909,18 @@ void DecisionTableLearner::Split(const std::vector<int8_t>& is_feature_used, Tre
   }
 }
 
+/*
+  Update leaf splits, ordered bins and histograms after splitting left_leaf into left_leaf and right_leaf.
+
+  Preconditions:
+  - data_partition_ has been split
+  - The tree has been split
+
+  Postconditions:
+  - leaf_splits_[left_leaf] and leaf_splits_[right_leaf] accurately reflect the contents of the leaf
+  - Ordered bins, if any, are split
+  - histogram_pool_ entries for left_leaf and right_leaf contain histograms for these leaves
+*/
 void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_leaf, const score_t* gradients, const score_t* hessians, const std::vector<int8_t>& is_feature_used){
   leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
   leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
@@ -861,6 +976,12 @@ void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_lea
   }
 }
 
+/*
+  Subsample features to avoid overfitting.
+
+  Postconditions:
+  is_feature_used contains a fraction of config_->feature_fraction ones.
+*/
 void DecisionTableLearner::SampleFeatures(std::vector<int8_t>& is_feature_used){
   int num_features = is_feature_used.size();  
   if (config_->feature_fraction < 1) {
@@ -887,6 +1008,14 @@ void DecisionTableLearner::SampleFeatures(std::vector<int8_t>& is_feature_used){
   }
 }
 
+/*
+  Initialise ordered_bins_ if present.
+
+  Preconditions:
+  - has_ordered_bin_ is true if and only if the data set has ordered bins (i.e. contains sparse features)
+  - data_partition_ has been initialised so all data is in the root node (leaf 0)
+  - data_partition_ has had the bagging indices, if any, set
+*/
 void DecisionTableLearner::InitOrderedBin(){
   // if has ordered bin, need to initialize the ordered bin
   if (has_ordered_bin_) {
@@ -928,6 +1057,9 @@ void DecisionTableLearner::InitOrderedBin(){
   }
 }
 
+/*
+  Train a tree using the given gradients, hessians and forced splits.
+*/
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
@@ -954,6 +1086,10 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
   return tree.release();
 }
 
+/*
+  Refit to a given tree structure.
+  This matches the serial tree learner's version, as it does not depend on the behaviour of the learner.
+*/
 Tree* DecisionTableLearner::FitByExistingTree(const Tree* old_tree, const score_t* gradients, const score_t *hessians) const {
   auto tree = std::unique_ptr<Tree>(new Tree(*old_tree));
   CHECK(data_partition_->num_leaves() >= tree->num_leaves());
@@ -986,6 +1122,10 @@ Tree* DecisionTableLearner::FitByExistingTree(const Tree* old_tree, const std::v
   return FitByExistingTree(old_tree, gradients, hessians);  
 }
 
+/*
+  Adjust tree output if needed.
+  This matches the serial tree learner's version, as it does not depend on the behaviour of the learner.
+*/
 void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* obj, const double* prediction,
                                         data_size_t total_num_data, const data_size_t* bag_indices, data_size_t bag_cnt) const {
   if (obj != nullptr && obj->IsRenewTreeOutput()) {
@@ -1038,6 +1178,10 @@ void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* 
   }
 }
 
+/*
+  Force the given splits.
+  This does not enforce that the splits are oblivious and the learner will not correctly apply split penalties if the splits are not.
+*/
 int32_t DecisionTableLearner::ForceSplits(Tree* tree, Json& forced_split_json, int32_t* cur_depth, const score_t* gradients, const score_t* hessians) {
   int32_t result_count = 0;
   // start at root leaf
