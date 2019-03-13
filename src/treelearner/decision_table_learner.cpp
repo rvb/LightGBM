@@ -132,12 +132,6 @@ void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feat
   }
 }
 
-void DecisionTableLearner::ConstructHistograms(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
-  for(int i = 0; i < num_leaves; ++i){
-    ConstructHistogram(is_feature_used, gradients, hessians, i);
-  }
-}
-
 void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx, FeatureSplits& output, const int dir, const bool skip_default_bin, const bool use_na_as_missing){
   std::vector<HistogramBinEntry*> leaf_histograms(num_leaves);
   bool is_splittable = false;
@@ -1057,8 +1051,6 @@ int32_t DecisionTableLearner::ForceSplits(Tree* tree, Json& forced_split_json, i
   std::vector<int8_t> is_feature_used(train_data_->num_features(), true);
   q.push(std::make_pair(forced_split_json, left_leaf));
   while (!q.empty()) {
-    //Needed to ensure that split computation below is accurate.
-    ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
     // then, compute own splits
     SplitInfo left_split;
     SplitInfo right_split;

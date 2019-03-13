@@ -76,7 +76,6 @@ class DecisionTableLearner: public TreeLearner {
                        data_size_t total_num_data, const data_size_t* bag_indices, data_size_t bag_cnt) const override;
 
  protected:
-  void ConstructHistograms(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians);
   void ConstructHistogram(const std::vector<int8_t>& is_feature_used, const score_t* gradients, const score_t* hessians, int leaf_idx);  
   FeatureSplits FindBestSplit(const std::vector<int8_t>& is_feature_used, const int num_leaves);
   FeatureSplits FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx);
