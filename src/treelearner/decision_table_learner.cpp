@@ -761,7 +761,7 @@ FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_
   return ret;
 }
 
-void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians){
+void DecisionTableLearner::Split(const std::vector<int8_t>& is_feature_used, Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians){
   const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
   feature_used_[inner_feature_index] = true;
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
@@ -808,34 +808,41 @@ void DecisionTableLearner::Split(Tree* tree, const FeatureSplits& split, const s
       data_partition_->Split(left_leaf, train_data_, inner_feature_index,
 			     cat_bitset_inner.data(), static_cast<int>(cat_bitset_inner.size()), split_info.default_left, right_leaf);
     }
-    leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
-    leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
-    if (has_ordered_bin_) {
-      // mark data that at left-leaf
-      const data_size_t* indices = data_partition_->indices();
-      const auto left_cnt = data_partition_->leaf_count(left_leaf);
-      char mark = 1;
-      data_size_t begin = data_partition_->leaf_begin(left_leaf);
-      data_size_t end = begin + left_cnt;
+    PerformSplit(left_leaf, right_leaf, gradients, hessians, is_feature_used);
+  }
+}
+
+void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_leaf, const score_t* gradients, const score_t* hessians, const std::vector<int8_t>& is_feature_used){
+  leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
+  leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
+  ConstructHistogram(is_feature_used, gradients, hessians, left_leaf);
+  ConstructHistogram(is_feature_used, gradients, hessians, right_leaf);
+  if (has_ordered_bin_) {
+    // mark data that at left-leaf
+    const data_size_t* indices = data_partition_->indices();
+    const auto left_cnt = data_partition_->leaf_count(left_leaf);
+    char mark = 1;
+    data_size_t begin = data_partition_->leaf_begin(left_leaf);
+    data_size_t end = begin + left_cnt;
 #pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-      for (data_size_t i = begin; i < end; ++i) {
-	is_data_in_leaf_[indices[i]] = 1;
-      }
-      OMP_INIT_EX();
-      // split the ordered bin
+    for (data_size_t i = begin; i < end; ++i) {
+      is_data_in_leaf_[indices[i]] = 1;
+    }
+    OMP_INIT_EX();
+    // split the ordered bin
 #pragma omp parallel for schedule(static)
-      for (int i = 0; i < static_cast<int>(ordered_bin_indices_.size()); ++i) {
-	OMP_LOOP_EX_BEGIN();
-	ordered_bins_[ordered_bin_indices_[i]]->Split(left_leaf, right_leaf, is_data_in_leaf_.data(), mark);
-	OMP_LOOP_EX_END();
-      }
-      OMP_THROW_EX();
+    for (int i = 0; i < static_cast<int>(ordered_bin_indices_.size()); ++i) {
+      OMP_LOOP_EX_BEGIN();
+      ordered_bins_[ordered_bin_indices_[i]]->Split(left_leaf, right_leaf, is_data_in_leaf_.data(), mark);
+      OMP_LOOP_EX_END();
+    }
+    OMP_THROW_EX();
 #pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-      for (data_size_t i = begin; i < end; ++i) {
-	is_data_in_leaf_[indices[i]] = 0;
-      }
+    for (data_size_t i = begin; i < end; ++i) {
+      is_data_in_leaf_[indices[i]] = 0;
     }
   }
+
 }
 
 void DecisionTableLearner::SampleFeatures(std::vector<int8_t>& is_feature_used){
@@ -908,24 +915,24 @@ void DecisionTableLearner::InitOrderedBin(){
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
+  std::vector<int8_t> is_feature_used(train_data_->num_features());
+  SampleFeatures(is_feature_used);  
   //Puts all data in the leaf.
   data_partition_->Init();
   leaf_splits_[0]->Init(0, data_partition_.get(), gradients, hessians);
-  InitOrderedBin();  
+  InitOrderedBin();
   int32_t cur_depth = 1;
+  ConstructHistogram(is_feature_used, gradients, hessians, 0);
   if (!forced_split_json.is_null()) {
     ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
   }
-  std::vector<int8_t> is_feature_used(train_data_->num_features());
-  SampleFeatures(is_feature_used);
   for(int i = cur_depth - 1; i < tree_depth_ - 1; ++i){
-    ConstructHistograms(is_feature_used, tree->num_leaves(), gradients, hessians);
     auto split = FindBestSplit(is_feature_used, tree->num_leaves(), gradients, hessians);
     if(split.gain <= 0.0){
       Log::Warning("No further splits with positive gain, best gain: %f", split.gain);
       break;
     }
-    Split(tree.get(), split, gradients, hessians);
+    Split(is_feature_used, tree.get(), split, gradients, hessians);
   }
   return tree.release();
 }
@@ -998,7 +1005,6 @@ void DecisionTableLearner::RenewTreeOutput(Tree* tree, const ObjectiveFunction* 
       bag_mapper = bag_indices;
     }
     std::vector<int> n_nozeroworker_perleaf(tree->num_leaves(), 1);
-    int num_machines = Network::num_machines();
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < tree->num_leaves(); ++i) {
       const double output = static_cast<double>(tree->LeafOutput(i));
@@ -1023,8 +1029,8 @@ int32_t DecisionTableLearner::ForceSplits(Tree* tree, Json& forced_split_json, i
   std::queue<std::pair<Json, int>> q;
   Json left = forced_split_json;
   Json right;
-  bool left_smaller = true;
   std::unordered_map<int, SplitInfo> forceSplitMap;
+  //TODO: Decide whether to pull this out.
   std::vector<int8_t> is_feature_used(train_data_->num_features(), true);
   q.push(std::make_pair(forced_split_json, left_leaf));
   while (!q.empty()) {
@@ -1137,37 +1143,7 @@ int32_t DecisionTableLearner::ForceSplits(Tree* tree, Json& forced_split_json, i
                              current_split_info.default_left, right_leaf);
     }
 
-    leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(),
-				  current_split_info.left_sum_hessian,
-				  current_split_info.right_sum_hessian);
-    leaf_splits_[right_leaf]->Init(left_leaf, data_partition_.get(),
-				  current_split_info.left_sum_hessian,
-				  current_split_info.right_sum_hessian);
-    if (has_ordered_bin_) {
-      // mark data that at left-leaf
-      const data_size_t* indices = data_partition_->indices();
-      const auto left_cnt = data_partition_->leaf_count(current_leaf);
-      char mark = 1;
-      data_size_t begin = data_partition_->leaf_begin(current_leaf);
-      data_size_t end = begin + left_cnt;
-#pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-      for (data_size_t i = begin; i < end; ++i) {
-	is_data_in_leaf_[indices[i]] = 1;
-      }
-      OMP_INIT_EX();
-      // split the ordered bin
-#pragma omp parallel for schedule(static)
-      for (int i = 0; i < static_cast<int>(ordered_bin_indices_.size()); ++i) {
-	OMP_LOOP_EX_BEGIN();
-	ordered_bins_[ordered_bin_indices_[i]]->Split(current_leaf, right_leaf, is_data_in_leaf_.data(), mark);
-	OMP_LOOP_EX_END();
-      }
-      OMP_THROW_EX();
-#pragma omp parallel for schedule(static, 512) if (end - begin >= 1024)
-      for (data_size_t i = begin; i < end; ++i) {
-	is_data_in_leaf_[indices[i]] = 0;
-      }
-    }
+    PerformSplit(left_leaf, right_leaf, gradients, hessians, is_feature_used);
 
     left = Json();
     right = Json();

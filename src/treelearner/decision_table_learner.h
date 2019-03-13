@@ -83,7 +83,8 @@ class DecisionTableLearner: public TreeLearner {
   FeatureSplits FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx);
   FeatureSplits FindBestFeatureSplitCategorical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx);
   void FindBestThresholdSequence(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx, FeatureSplits& output, const int dir, const bool skip_default_bin, const bool use_na_as_missing);
-  void Split(Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians);
+  void Split(const std::vector<int8_t>& is_feature_used, Tree* tree, const FeatureSplits& split, const score_t* gradients, const score_t* hessians);
+  void PerformSplit(const int left_leaf, const int right_leaf, const score_t* gradients, const score_t* hessians, const std::vector<int8_t>& is_feature_used);
   int32_t ForceSplits(Tree* tree, Json& forced_split_json, int32_t* cur_depth, const score_t* gradients, const score_t* hessians);
   void SampleFeatures(std::vector<int8_t>& is_feature_used);
   void InitOrderedBin();
