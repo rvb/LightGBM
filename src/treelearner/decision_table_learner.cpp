@@ -127,7 +127,7 @@ void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feat
       train_data_->FixHistogram(feature_idx,
 				leaf_splits_[leaf_idx]->sum_gradients(), leaf_splits_[leaf_idx]->sum_hessians(),
 				leaf_splits_[leaf_idx]->num_data_in_leaf(),
-				histogram_array[feature_idx].RawData());	
+				histogram_array[feature_idx].RawData());
     }
   }
 }
@@ -815,8 +815,7 @@ void DecisionTableLearner::Split(const std::vector<int8_t>& is_feature_used, Tre
 void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_leaf, const score_t* gradients, const score_t* hessians, const std::vector<int8_t>& is_feature_used){
   leaf_splits_[left_leaf]->Init(left_leaf, data_partition_.get(), gradients, hessians);
   leaf_splits_[right_leaf]->Init(right_leaf, data_partition_.get(), gradients, hessians);
-  ConstructHistogram(is_feature_used, gradients, hessians, left_leaf);
-  ConstructHistogram(is_feature_used, gradients, hessians, right_leaf);
+
   if (has_ordered_bin_) {
     // mark data that at left-leaf
     const data_size_t* indices = data_partition_->indices();
@@ -843,6 +842,29 @@ void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_lea
     }
   }
 
+  //Left node is smaller, move the parent histogram (now in left leaf) into the right leaf.
+  //Then compute left histogram and subtract from right.
+  if(leaf_splits_[left_leaf]->num_data_in_leaf() < leaf_splits_[right_leaf]->num_data_in_leaf()){
+    FeatureHistogram* left_arr, *right_arr;
+    histogram_pool_.Move(left_leaf, right_leaf);
+    histogram_pool_.Get(right_leaf, &right_arr);
+    histogram_pool_.Get(left_leaf, &left_arr);
+    ConstructHistogram(is_feature_used, gradients, hessians, left_leaf);
+    for(int i = 0; i < is_feature_used.size(); ++i){
+      if(!is_feature_used[i]){ continue;}
+      right_arr[i].Subtract(left_arr[i]);
+    }
+  //Right node is smaller, construct its histogram and subtract from left. (This path appears fine, trigger the above unconditionally as a debugging exercise)
+  } else {
+    FeatureHistogram* left_arr, *right_arr;
+    ConstructHistogram(is_feature_used, gradients, hessians, right_leaf);
+    histogram_pool_.Get(right_leaf, &right_arr);
+    histogram_pool_.Get(left_leaf, &left_arr);
+    for(int i = 0; i < is_feature_used.size(); ++i){
+      if(!is_feature_used[i]){ continue;}
+      left_arr[i].Subtract(right_arr[i]);
+    }    
+  }
 }
 
 void DecisionTableLearner::SampleFeatures(std::vector<int8_t>& is_feature_used){
