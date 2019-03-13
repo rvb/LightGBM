@@ -122,7 +122,7 @@ void DecisionTableLearner::ConstructHistogram(const std::vector<int8_t>& is_feat
 				   ordered_bins_, gradients, hessians,
 				   ordered_gradients_.data(), ordered_hessians_.data(), is_constant_hessian_,
 				   ptr_leaf_hist_data);
-  for(int feature_idx = 0; feature_idx < is_feature_used.size(); ++feature_idx){
+  for(size_t feature_idx = 0; feature_idx < is_feature_used.size(); ++feature_idx){
     if(is_feature_used[feature_idx]){
       train_data_->FixHistogram(feature_idx,
 				leaf_splits_[leaf_idx]->sum_gradients(), leaf_splits_[leaf_idx]->sum_hessians(),
@@ -357,7 +357,7 @@ void DecisionTableLearner::FindBestThresholdSequence(const int num_leaves, const
   }
 }
 
-FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   auto num_bin = train_data_->FeatureNumBin(feature_idx);
   auto missing_type = train_data_->FeatureBinMapper(feature_idx)->missing_type();
   FeatureSplits output(num_leaves);
@@ -381,7 +381,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitNumerical(const int num_
   return output;
 }
 
-FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
+FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int num_leaves, const double min_gain_shift, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   FeatureSplits output(num_leaves);
   auto bin_mapper = train_data_->FeatureBinMapper(feature_idx);
   int num_bin = bin_mapper->num_bin();
@@ -646,7 +646,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
     if(best_gain > kMinScore){
       for(int i = 0; i < num_leaves; ++i){
 	if(best_direction >= 0){
-	  for(int j = 0; j <= best_threshold[i]; ++j){
+	  for(int j = 0; j <= static_cast<int>(best_threshold[i]); ++j){
 	    if(leaf_values[i][j].second > best_leaf_value_threshold){
 	      throw std::runtime_error("Threshold should be the largest included value in leaf, it is not.");
 	    }
@@ -708,9 +708,9 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplitCategorical(const int nu
 FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, const double min_gain_shift, const std::vector<double>& gain_shifts, const std::vector<FeatureHistogram*>& histogram_arrs, const int feature_idx){
   FeatureSplits output(num_leaves);
   if(train_data_->FeatureBinMapper(feature_idx)->bin_type() == BinType::NumericalBin){
-    output = FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
+    output = FindBestFeatureSplitNumerical(num_leaves, min_gain_shift, histogram_arrs, feature_idx);
   } else {
-    output = FindBestFeatureSplitCategorical(num_leaves, min_gain_shift, gain_shifts, histogram_arrs, feature_idx);
+    output = FindBestFeatureSplitCategorical(num_leaves, min_gain_shift, histogram_arrs, feature_idx);
   }
   int real_fidx = train_data_->RealFeatureIndex(feature_idx);
   output.gain -= min_gain_shift;
@@ -721,7 +721,7 @@ FeatureSplits DecisionTableLearner::FindBestFeatureSplit(const int num_leaves, c
   return output;
 }
 
-FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_feature_used, const int num_leaves, const score_t* gradients, const score_t* hessians){
+FeatureSplits DecisionTableLearner::FindBestSplit(const std::vector<int8_t>& is_feature_used, const int num_leaves){
   FeatureSplits ret(num_leaves);
   std::vector<FeatureHistogram*> histogram_arrs(num_leaves);
   for(int leaf_idx = 0; leaf_idx < num_leaves; ++leaf_idx){
@@ -765,7 +765,7 @@ void DecisionTableLearner::Split(const std::vector<int8_t>& is_feature_used, Tre
   const int inner_feature_index = train_data_->InnerFeatureIndex(split.leaf_splits[0].feature);
   feature_used_[inner_feature_index] = true;
   bool is_numerical_split = train_data_->FeatureBinMapper(inner_feature_index)->bin_type() == BinType::NumericalBin;
-  for(int left_leaf = 0; left_leaf < split.leaf_splits.size(); left_leaf++){
+  for(int left_leaf = 0; left_leaf < static_cast<int>(split.leaf_splits.size()); left_leaf++){
     int right_leaf;
     auto split_info = split.leaf_splits[left_leaf];
     if(is_numerical_split){
@@ -850,7 +850,7 @@ void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_lea
     histogram_pool_.Get(right_leaf, &right_arr);
     histogram_pool_.Get(left_leaf, &left_arr);
     ConstructHistogram(is_feature_used, gradients, hessians, left_leaf);
-    for(int i = 0; i < is_feature_used.size(); ++i){
+    for(size_t i = 0; i < is_feature_used.size(); ++i){
       if(!is_feature_used[i]){ continue;}
       right_arr[i].Subtract(left_arr[i]);
     }
@@ -860,7 +860,7 @@ void DecisionTableLearner::PerformSplit(const int left_leaf, const int right_lea
     ConstructHistogram(is_feature_used, gradients, hessians, right_leaf);
     histogram_pool_.Get(right_leaf, &right_arr);
     histogram_pool_.Get(left_leaf, &left_arr);
-    for(int i = 0; i < is_feature_used.size(); ++i){
+    for(size_t i = 0; i < is_feature_used.size(); ++i){
       if(!is_feature_used[i]){ continue;}
       left_arr[i].Subtract(right_arr[i]);
     }    
@@ -937,6 +937,7 @@ void DecisionTableLearner::InitOrderedBin(){
 Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessians, bool is_constant_hessian, Json& forced_split_json) {
   auto num_leaves = 1 << tree_depth_;
   auto tree = std::unique_ptr<Tree>(new Tree(num_leaves));
+  is_constant_hessian_ = is_constant_hessian;
   std::vector<int8_t> is_feature_used(train_data_->num_features());
   SampleFeatures(is_feature_used);  
   //Puts all data in the leaf.
@@ -949,7 +950,7 @@ Tree* DecisionTableLearner::Train(const score_t* gradients, const score_t *hessi
     ForceSplits(tree.get(), forced_split_json, &cur_depth, gradients, hessians);
   }
   for(int i = cur_depth - 1; i < tree_depth_ - 1; ++i){
-    auto split = FindBestSplit(is_feature_used, tree->num_leaves(), gradients, hessians);
+    auto split = FindBestSplit(is_feature_used, tree->num_leaves());
     if(split.gain <= 0.0){
       Log::Warning("No further splits with positive gain, best gain: %f", split.gain);
       break;
